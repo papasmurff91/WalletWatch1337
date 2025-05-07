@@ -17,6 +17,7 @@ from notification_service import NotificationService
 from wallet_monitor import WalletMonitor
 from suspicious_activity import SuspiciousActivityDetector
 from phishing_detector import PhishingDetector
+from twitter_service import TwitterService
 from config import WEB_PORT, WEB_HOST, HONEYPOT_FILE, WHITELIST_FILE, TOKEN_MAP, SUSPICIOUS_ADDRESSES_FILE
 
 # Initialize Flask app
@@ -309,26 +310,19 @@ def twitter_webhook_challenge():
 @app.route('/api/webhook/twitter/test', methods=['GET'])
 def api_test_twitter_webhook():
     """Test the Twitter webhook configuration"""
-    # Import Twitter services
-    from twitter_service import TwitterService
-    
     try:
         # Verify Twitter credentials
         twitter_service = TwitterService()
-        if not twitter_service.api_key or not twitter_service.api_secret:
+        
+        # Verify that credentials are correct
+        credentials = twitter_service.verify_credentials()
+        if not credentials['success']:
             return jsonify({
                 'success': False,
-                'error': 'Missing Twitter API credentials'
+                'error': credentials['error'] if 'error' in credentials else 'Failed to verify Twitter credentials'
             }), 400
-            
-        # Check if Tweepy is properly initialized
-        if not twitter_service.client and not twitter_service.api:
-            return jsonify({
-                'success': False,
-                'error': 'Twitter API client not initialized'
-            }), 400
-            
-        # Check if we can get a valid webhook URL
+        
+        # Get the webhook URL
         hostname = request.headers.get('Host', 'yourdomain.com')
         protocol = request.headers.get('X-Forwarded-Proto', 'https')
         webhook_url = f"{protocol}://{hostname}/webhooks/twitter/activity"
@@ -345,12 +339,130 @@ def api_test_twitter_webhook():
                 'success': False,
                 'error': 'Invalid webhook URL format'
             }), 400
-            
-        # Return success
+        
+        # Check existing webhook status
+        webhook_status = twitter_service.get_webhook_status()
+        
+        # Return success with details
         return jsonify({
             'success': True,
             'webhook_url': webhook_url,
+            'credentials': {
+                'username': credentials.get('username', 'Unknown'),
+                'v1_authenticated': credentials.get('v1_authenticated', False),
+                'v2_authenticated': credentials.get('v2_authenticated', False)
+            },
+            'webhooks': webhook_status.get('webhooks', []) if webhook_status.get('success', False) else [],
             'message': 'Twitter webhook URL is valid and API credentials are configured correctly'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@app.route('/api/webhook/twitter/register', methods=['POST'])
+def api_register_twitter_webhook():
+    """Register a webhook URL with Twitter"""
+    from twitter_service import TwitterService
+    
+    try:
+        # Get environment name (optional)
+        data = request.json or {}
+        environment_name = data.get('environment_name', 'dev')
+        
+        # Get the webhook URL
+        hostname = request.headers.get('Host', 'yourdomain.com')
+        protocol = request.headers.get('X-Forwarded-Proto', 'https')
+        webhook_url = f"{protocol}://{hostname}/webhooks/twitter/activity"
+        
+        # Initialize Twitter service
+        twitter_service = TwitterService()
+        
+        # Register the webhook
+        result = twitter_service.register_webhook(webhook_url, environment_name)
+        
+        if not result['success']:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error registering webhook')
+            }), 400
+            
+        return jsonify({
+            'success': True,
+            'webhook_id': result.get('webhook_id'),
+            'webhook_url': result.get('webhook_url'),
+            'environment': result.get('environment'),
+            'message': 'Webhook registered successfully with Twitter'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@app.route('/api/webhook/twitter/delete', methods=['POST'])
+def api_delete_twitter_webhooks():
+    """Delete all registered webhooks"""
+    from twitter_service import TwitterService
+    
+    try:
+        # Get environment name (optional)
+        data = request.json or {}
+        environment_name = data.get('environment_name', 'dev')
+        
+        # Initialize Twitter service
+        twitter_service = TwitterService()
+        
+        # Delete webhooks
+        result = twitter_service.delete_webhooks(environment_name)
+        
+        if not result['success']:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error deleting webhooks')
+            }), 400
+            
+        return jsonify({
+            'success': True,
+            'deleted_webhooks': result.get('deleted_webhooks', []),
+            'message': 'Webhooks deleted successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@app.route('/api/webhook/twitter/status', methods=['GET'])
+def api_get_twitter_webhook_status():
+    """Get status of registered webhooks"""
+    from twitter_service import TwitterService
+    
+    try:
+        # Get environment name (optional)
+        environment_name = request.args.get('environment_name', 'dev')
+        
+        # Initialize Twitter service
+        twitter_service = TwitterService()
+        
+        # Get webhook status
+        result = twitter_service.get_webhook_status(environment_name)
+        
+        if not result['success']:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Unknown error getting webhook status')
+            }), 400
+            
+        return jsonify({
+            'success': True,
+            'webhooks': result.get('webhooks', []),
+            'subscriptions': result.get('subscriptions', []),
+            'message': 'Webhook status retrieved successfully'
         })
         
     except Exception as e:

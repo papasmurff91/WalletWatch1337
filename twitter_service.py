@@ -323,3 +323,154 @@ class TwitterService:
         except Exception as e:
             self.log_message(f"Error getting crypto trends: {str(e)}")
             return {}
+    
+    def register_webhook(self, webhook_url, environment_name="dev"):
+        """Register a webhook URL with Twitter's Account Activity API"""
+        if not self.api:
+            self.log_message("Cannot register webhook: Tweepy v1.1 API not initialized")
+            return {
+                "success": False,
+                "error": "Twitter API not properly initialized"
+            }
+            
+        try:
+            # Check if we need to remove existing webhooks first
+            webhooks = self.api.get_webhooks()
+            if webhooks:
+                for webhook in webhooks:
+                    self.log_message(f"Removing existing webhook: {webhook.url}")
+                    self.api.delete_webhook(webhook.id, environment_name)
+            
+            # Register the new webhook
+            result = self.api.register_webhook(webhook_url, environment_name)
+            self.log_message(f"Registered webhook: {webhook_url}")
+            
+            # Subscribe to the user's activity
+            self.api.subscribe(environment_name=environment_name)
+            self.log_message(f"Subscribed to user activity in environment: {environment_name}")
+            
+            return {
+                "success": True,
+                "webhook_id": result.id,
+                "webhook_url": result.url,
+                "environment": environment_name
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            self.log_message(f"Error registering webhook: {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg
+            }
+    
+    def delete_webhooks(self, environment_name="dev"):
+        """Delete all registered webhooks"""
+        if not self.api:
+            self.log_message("Cannot delete webhooks: Tweepy v1.1 API not initialized")
+            return {
+                "success": False,
+                "error": "Twitter API not properly initialized"
+            }
+            
+        try:
+            webhooks = self.api.get_webhooks()
+            deleted = []
+            
+            for webhook in webhooks:
+                self.log_message(f"Deleting webhook: {webhook.url}")
+                self.api.delete_webhook(webhook.id, environment_name)
+                deleted.append(webhook.url)
+                
+            return {
+                "success": True,
+                "deleted_webhooks": deleted
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            self.log_message(f"Error deleting webhooks: {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg
+            }
+    
+    def get_webhook_status(self, environment_name="dev"):
+        """Get status of registered webhooks"""
+        if not self.api:
+            self.log_message("Cannot get webhook status: Tweepy v1.1 API not initialized")
+            return {
+                "success": False,
+                "error": "Twitter API not properly initialized"
+            }
+            
+        try:
+            webhooks = self.api.get_webhooks()
+            webhook_list = []
+            
+            for webhook in webhooks:
+                webhook_list.append({
+                    "id": webhook.id,
+                    "url": webhook.url,
+                    "valid": webhook.valid,
+                    "created_at": webhook.created_at
+                })
+                
+            # Check subscriptions
+            subscriptions = self.api.get_subscriptions(environment_name)
+            
+            return {
+                "success": True,
+                "webhooks": webhook_list,
+                "subscriptions": subscriptions
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            self.log_message(f"Error getting webhook status: {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg
+            }
+    
+    def verify_credentials(self):
+        """Verify that Twitter credentials are valid"""
+        if not self.api and not self.client:
+            return {
+                "success": False,
+                "error": "No Twitter API clients initialized"
+            }
+        
+        try:
+            if self.api:
+                # Check v1.1 credentials
+                user = self.api.verify_credentials()
+                v1_authenticated = True
+                username = user.screen_name
+            else:
+                v1_authenticated = False
+                username = None
+                
+            if self.client:
+                # Check v2 credentials
+                user_info = self.client.get_me()
+                v2_authenticated = user_info.data is not None
+                if not username and user_info.data:
+                    username = user_info.data.username
+            else:
+                v2_authenticated = False
+                
+            return {
+                "success": True,
+                "v1_authenticated": v1_authenticated,
+                "v2_authenticated": v2_authenticated,
+                "username": username
+            }
+                
+        except Exception as e:
+            error_msg = str(e)
+            self.log_message(f"Error verifying credentials: {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg
+            }

@@ -346,36 +346,70 @@
         
         // Register webhook with Twitter
         document.getElementById('registerWebhookBtn').addEventListener('click', function() {
-            // In a real implementation, this would make an API call to Twitter
-            // to register the webhook directly from your app
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Registering...';
             
-            // For demonstration, we'll just show instructions
-            setTimeout(() => {
+            // Make an API call to register the webhook
+            fetch('/api/webhook/twitter/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    environment_name: 'dev'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
                 this.disabled = false;
                 this.innerHTML = '<i data-feather="link"></i> Register Webhook with Twitter';
                 feather.replace();
                 
-                // Show modal with instructions
-                showModal('Twitter Webhook Registration', `
-                    <p>To register your webhook with Twitter, you'll need to:</p>
-                    <ol>
-                        <li>Go to the <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">Twitter Developer Portal</a></li>
-                        <li>Navigate to your Project and App settings</li>
-                        <li>Go to the "Account Activity API" / "Dev environments" section</li>
-                        <li>Create a dev environment if you haven't already</li>
-                        <li>Use the Twitter API to register your webhook URL</li>
-                    </ol>
-                    <p>For example, using Tweepy you can register with:</p>
-                    <pre><code>
-import tweepy
-auth = tweepy.OAuth1UserHandler(consumer_key, consumer_secret, access_token, access_token_secret)
-api = tweepy.API(auth)
-api.register_webhook("https://yourdomain.com/webhooks/twitter/activity", environment_name="your-env-name")
-                    </code></pre>
-                `);
-            }, 1500);
+                if (data.success) {
+                    showSuccessMessage('Webhook registered successfully with Twitter!');
+                    
+                    // Show registration details
+                    showModal('Webhook Registration Successful', `
+                        <div class="alert alert-success">
+                            <h4 class="alert-heading">Success!</h4>
+                            <p>Your webhook has been successfully registered with Twitter.</p>
+                        </div>
+                        <h5>Webhook Details:</h5>
+                        <div class="mb-3">
+                            <p><strong>Webhook URL:</strong> ${data.webhook_url}</p>
+                            <p><strong>Webhook ID:</strong> ${data.webhook_id}</p>
+                            <p><strong>Environment:</strong> ${data.environment}</p>
+                        </div>
+                        <p class="mb-0">You can now receive real-time notifications from Twitter.</p>
+                    `);
+                } else {
+                    showErrorMessage('Failed to register webhook: ' + data.error);
+                    
+                    // Show troubleshooting information
+                    showModal('Webhook Registration Failed', `
+                        <div class="alert alert-danger">
+                            <h4 class="alert-heading">Registration Failed</h4>
+                            <p>There was an error registering your webhook with Twitter.</p>
+                            <hr>
+                            <p class="mb-0"><strong>Error:</strong> ${data.error}</p>
+                        </div>
+                        <h5>Troubleshooting Steps:</h5>
+                        <ol>
+                            <li>Make sure your Twitter API credentials are correct</li>
+                            <li>Verify that your app has the correct permissions (read, write, and direct messages)</li>
+                            <li>Check that you've created a dev environment in your Twitter developer account</li>
+                            <li>Ensure your server is publicly accessible (Twitter needs to reach your webhook URL)</li>
+                        </ol>
+                        <p>For more information, <a href="https://developer.twitter.com/en/docs/twitter-api/premium/account-activity-api/guides/getting-started-with-webhooks" target="_blank">visit Twitter's webhook documentation</a>.</p>
+                    `);
+                }
+            })
+            .catch(error => {
+                this.disabled = false;
+                this.innerHTML = '<i data-feather="link"></i> Register Webhook with Twitter';
+                feather.replace();
+                showErrorMessage('Error: ' + error.toString());
+            });
         });
         
         // Test webhook connection
@@ -393,8 +427,98 @@ api.register_webhook("https://yourdomain.com/webhooks/twitter/activity", environ
                     
                     if (data.success) {
                         showSuccessMessage('Webhook is properly configured and responding!');
+                        
+                        // Show detailed status in a modal
+                        let webhooksHtml = '';
+                        if (data.webhooks && data.webhooks.length > 0) {
+                            webhooksHtml = `
+                                <h5 class="mt-3">Registered Webhooks</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Webhook ID</th>
+                                                <th>URL</th>
+                                                <th>Valid</th>
+                                                <th>Created</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                            `;
+                            
+                            data.webhooks.forEach(webhook => {
+                                webhooksHtml += `
+                                    <tr>
+                                        <td>${webhook.id}</td>
+                                        <td>${webhook.url}</td>
+                                        <td>${webhook.valid ? '<span class="text-success">Yes</span>' : '<span class="text-danger">No</span>'}</td>
+                                        <td>${webhook.created_at || 'Unknown'}</td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            webhooksHtml += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
+                        } else {
+                            webhooksHtml = `
+                                <div class="alert alert-warning mt-3">
+                                    <i data-feather="alert-triangle"></i>
+                                    No webhooks are currently registered with Twitter.
+                                    Click the "Register Webhook with Twitter" button to set up a webhook.
+                                </div>
+                            `;
+                        }
+                        
+                        showModal('Twitter Webhook Status', `
+                            <div class="alert alert-success">
+                                <h4 class="alert-heading">Connection Successful</h4>
+                                <p>Your Twitter API credentials are valid and the webhook URL is correctly formatted.</p>
+                            </div>
+                            
+                            <h5>Account Information</h5>
+                            <p><strong>Twitter Username:</strong> ${data.credentials?.username || 'Unknown'}</p>
+                            <p><strong>API v1.1 Auth:</strong> ${data.credentials?.v1_authenticated ? '<span class="text-success">Verified</span>' : '<span class="text-danger">Not verified</span>'}</p>
+                            <p><strong>API v2 Auth:</strong> ${data.credentials?.v2_authenticated ? '<span class="text-success">Verified</span>' : '<span class="text-danger">Not verified</span>'}</p>
+                            
+                            <h5>Webhook URL</h5>
+                            <p>${data.webhook_url}</p>
+                            
+                            ${webhooksHtml}
+                            
+                            <div class="mt-3">
+                                <p class="mb-0">
+                                    <i data-feather="info"></i>
+                                    <small>Remember that webhooks need to be accessible from the internet. If you're running on a local or private network, Twitter won't be able to send events to your webhook.</small>
+                                </p>
+                            </div>
+                        `);
+                        
+                        // Replace any feather icons in the modal
+                        feather.replace();
                     } else {
                         showErrorMessage('Webhook test failed: ' + data.error);
+                        
+                        // Show troubleshooting modal
+                        showModal('Webhook Test Failed', `
+                            <div class="alert alert-danger">
+                                <h4 class="alert-heading">Connection Failed</h4>
+                                <p>There was an error testing your Twitter webhook.</p>
+                                <hr>
+                                <p class="mb-0"><strong>Error:</strong> ${data.error}</p>
+                            </div>
+                            
+                            <h5>Troubleshooting Steps</h5>
+                            <ol>
+                                <li>Verify your Twitter API credentials are correct</li>
+                                <li>Make sure your Twitter app has the required permissions</li>
+                                <li>Check that you have a valid developer account</li>
+                                <li>Try logging out and back into Twitter</li>
+                                <li>Make sure you've saved your API keys in the settings</li>
+                            </ol>
+                        `);
                     }
                 })
                 .catch(error => {
