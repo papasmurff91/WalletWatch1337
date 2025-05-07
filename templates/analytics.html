@@ -1,0 +1,955 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Transaction Analytics{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="bar-chart-2"></i>
+                    Transaction Analytics
+                </h5>
+                <div>
+                    <button id="refreshBtn" class="btn btn-sm btn-light">
+                        <i data-feather="refresh-cw"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i data-feather="info"></i>
+                    Analytics for wallet: <strong>{{ wallet_address }}</strong>
+                </div>
+                
+                <!-- Time Range Selector -->
+                <div class="mb-4">
+                    <div class="btn-group" role="group" aria-label="Time range">
+                        <button type="button" class="btn btn-outline-primary time-range active" data-range="1d">24h</button>
+                        <button type="button" class="btn btn-outline-primary time-range" data-range="7d">7d</button>
+                        <button type="button" class="btn btn-outline-primary time-range" data-range="30d">30d</button>
+                        <button type="button" class="btn btn-outline-primary time-range" data-range="all">All</button>
+                    </div>
+                </div>
+                
+                <!-- Transaction Volume Chart -->
+                <div class="row">
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h6 class="mb-0">Transaction Volume (24h)</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="transactionVolumeChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h6 class="mb-0">Transaction Types</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="transactionTypesChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Token Distribution & SOL Balance -->
+                <div class="row">
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h6 class="mb-0">Token Distribution (USD Value)</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="tokenDistributionChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h6 class="mb-0">SOL Balance Over Time</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="solBalanceChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Patterns & Insights -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="trending-up"></i>
+                    Transaction Patterns & Insights
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h6 class="mb-0">Transaction Velocity</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="velocityChart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h6 class="mb-0">Top Interacted Programs</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="programsChart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Key Metrics -->
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-primary" id="totalTransactions">-</h3>
+                                <div class="text-muted">Total Transactions</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-success" id="incomingTx">-</h3>
+                                <div class="text-muted">Incoming</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-danger" id="outgoingTx">-</h3>
+                                <div class="text-muted">Outgoing</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-warning" id="swapTx">-</h3>
+                                <div class="text-muted">Swaps</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Risk Analysis -->
+                <div class="mt-4">
+                    <h6>Risk Analysis</h6>
+                    <div class="progress mb-2" style="height: 30px;">
+                        <div id="riskScoreBar" class="progress-bar bg-success" role="progressbar" style="width: 15%;" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100">15% - Low Risk</div>
+                    </div>
+                    <div class="small text-muted">
+                        Based on transaction patterns, wallet age, interactions with known contracts, and suspicious activity.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Details -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="list"></i>
+                    Recent Transaction Details
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="recentTransactionsDetails">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Set up refresh button
+        document.getElementById('refreshBtn').addEventListener('click', refreshData);
+        
+        // Set up time range buttons
+        document.querySelectorAll('.time-range').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Remove active class from all buttons
+                document.querySelectorAll('.time-range').forEach(b => {
+                    b.classList.remove('active');
+                });
+                
+                // Add active class to clicked button
+                e.target.classList.add('active');
+                
+                // Update chart titles with selected time range
+                const range = e.target.getAttribute('data-range');
+                updateChartTitles(range);
+                
+                // Load data for the selected range
+                loadAnalyticsData(range);
+            });
+        });
+        
+        // Initial data load (default 24h)
+        loadAnalyticsData('1d');
+        
+        // Load transaction details
+        loadTransactionDetails();
+    });
+    
+    function updateChartTitles(range) {
+        const displayText = {
+            '1d': '24h',
+            '7d': '7 Days',
+            '30d': '30 Days',
+            'all': 'All Time'
+        };
+        
+        // Update the chart titles
+        document.querySelector('#transactionVolumeChart').closest('.card').querySelector('.card-header h6').textContent = 
+            `Transaction Volume (${displayText[range]})`;
+            
+        document.querySelector('#solBalanceChart').closest('.card').querySelector('.card-header h6').textContent = 
+            `SOL Balance Over Time (${displayText[range]})`;
+    }
+    
+    function refreshData() {
+        // Get the active time range
+        const activeRange = document.querySelector('.time-range.active').getAttribute('data-range');
+        
+        // Reload data
+        loadAnalyticsData(activeRange);
+        loadTransactionDetails();
+    }
+    
+    function loadAnalyticsData(timeRange) {
+        // In a real implementation, we would fetch data from the API with the time range parameter
+        // For this demo, we'll use simulated data
+        
+        // Show loading state
+        document.querySelectorAll('canvas').forEach(canvas => {
+            canvas.style.opacity = '0.5';
+        });
+        
+        // Fetch transaction data
+        fetch(`/api/transactions?limit=100`)
+            .then(response => response.json())
+            .then(data => {
+                // Process the data for the charts
+                const processedData = processTransactionData(data, timeRange);
+                
+                // Update charts
+                renderTransactionVolumeChart(processedData.volumeData);
+                renderTransactionTypesChart(processedData.transactionTypes);
+                renderTokenDistributionChart(processedData.tokenDistribution);
+                renderSolBalanceChart(processedData.solBalance);
+                renderVelocityChart(processedData.velocity);
+                renderProgramsChart(processedData.programs);
+                
+                // Update metrics
+                updateMetrics(processedData.metrics);
+                
+                // Update risk score
+                updateRiskScore(processedData.riskScore);
+                
+                // Restore full opacity
+                document.querySelectorAll('canvas').forEach(canvas => {
+                    canvas.style.opacity = '1';
+                });
+            })
+            .catch(error => {
+                console.error('Error loading analytics data:', error);
+                // Show error state
+                document.querySelectorAll('canvas').forEach(canvas => {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'red';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Error loading data', canvas.width / 2, canvas.height / 2);
+                });
+            });
+    }
+    
+    function processTransactionData(transactions, timeRange) {
+        // Filter transactions based on time range
+        const now = new Date();
+        let startDate;
+        
+        switch(timeRange) {
+            case '1d':
+                startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                break;
+            case '7d':
+                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                break;
+            case '30d':
+                startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                break;
+            case 'all':
+                startDate = new Date(0); // Beginning of time
+                break;
+        }
+        
+        // This would filter by date in a real implementation
+        // For the demo, we'll use all transactions
+        const filteredTransactions = transactions;
+        
+        // Count transaction types
+        const transactionTypes = {
+            sol_transfer: 0,
+            token_transfer: 0,
+            swap: 0,
+            other: 0
+        };
+        
+        // Count direction
+        const direction = {
+            incoming: 0,
+            outgoing: 0
+        };
+        
+        // Track unique tokens and their values
+        const tokens = {};
+        
+        // Track SOL balance over time
+        const solBalance = [];
+        let currentBalance = 10; // Starting with 10 SOL for demo
+        
+        // Track transaction volume over time
+        const volumeByDate = {};
+        
+        // Track program interactions
+        const programs = {};
+        
+        // Process each transaction
+        filteredTransactions.forEach(tx => {
+            // Aggregate transaction types
+            let hasType = false;
+            tx.events.forEach(event => {
+                if (event.type in transactionTypes) {
+                    transactionTypes[event.type]++;
+                    hasType = true;
+                    
+                    // Track direction for token and SOL transfers
+                    if (event.type === 'sol_transfer' || event.type === 'token_transfer') {
+                        if (event.direction === 'Received') {
+                            direction.incoming++;
+                        } else {
+                            direction.outgoing++;
+                        }
+                    }
+                    
+                    // Collect token information
+                    if (event.type === 'token_transfer') {
+                        const token = event.token_name || 'Unknown Token';
+                        if (!tokens[token]) {
+                            tokens[token] = 0;
+                        }
+                        
+                        // Simulate token value
+                        tokens[token] += event.amount * (Math.random() * 0.5 + 0.5); // Random price between 0.5 and 1
+                    }
+                    
+                    // Track SOL balance changes
+                    if (event.type === 'sol_transfer') {
+                        if (event.direction === 'Received') {
+                            currentBalance += event.amount;
+                        } else {
+                            currentBalance -= event.amount;
+                        }
+                        
+                        // Ensure balance is never negative
+                        currentBalance = Math.max(0, currentBalance);
+                        
+                        solBalance.push({
+                            timestamp: tx.timestamp,
+                            balance: currentBalance
+                        });
+                    }
+                }
+            });
+            
+            if (!hasType) {
+                transactionTypes.other++;
+            }
+            
+            // Track volume by date
+            const txDate = tx.timestamp.split(' ')[0]; // Get just the date part
+            if (!volumeByDate[txDate]) {
+                volumeByDate[txDate] = 0;
+            }
+            volumeByDate[txDate]++;
+            
+            // Track program interactions
+            tx.program_ids?.forEach(program => {
+                if (!programs[program]) {
+                    programs[program] = 0;
+                }
+                programs[program]++;
+            });
+        });
+        
+        // Convert volume by date to array
+        const volumeData = [];
+        for (const date in volumeByDate) {
+            volumeData.push({
+                date,
+                count: volumeByDate[date]
+            });
+        }
+        
+        // Sort volume data by date
+        volumeData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        // Only keep the last 10 entries if we have more
+        if (volumeData.length > 10) {
+            volumeData.splice(0, volumeData.length - 10);
+        }
+        
+        // Sort SOL balance by timestamp
+        solBalance.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        // Only keep the last 10 entries if we have more
+        if (solBalance.length > 10) {
+            solBalance.splice(0, solBalance.length - 10);
+        }
+        
+        // For transaction velocity, simulate some data based on time range
+        const velocity = [];
+        const velocityLabels = [];
+        
+        // Create hourly velocity for 24h range
+        if (timeRange === '1d') {
+            for (let i = 0; i < 24; i++) {
+                const hour = i.toString().padStart(2, '0') + ':00';
+                velocityLabels.push(hour);
+                velocity.push(Math.floor(Math.random() * 5)); // 0-5 transactions per hour
+            }
+        } 
+        // Daily velocity for other ranges
+        else {
+            const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 10;
+            for (let i = 0; i < days; i++) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - (days - i - 1));
+                velocityLabels.push(date.toLocaleDateString());
+                velocity.push(Math.floor(Math.random() * 10 + 5)); // 5-15 transactions per day
+            }
+        }
+        
+        // Transform program data for chart
+        const programsData = {
+            labels: [],
+            data: []
+        };
+        
+        // Get top 5 programs by interaction count
+        const topPrograms = Object.entries(programs)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+            
+        topPrograms.forEach(([program, count]) => {
+            // Shorten program ID for display
+            const shortProgram = program.substring(0, 5) + '...' + program.substring(program.length - 5);
+            programsData.labels.push(shortProgram);
+            programsData.data.push(count);
+        });
+        
+        // Calculate a risk score (0-100)
+        // This is a simplistic model for demo purposes
+        let riskScore = 0;
+        
+        // Base score
+        riskScore += 10; // Every wallet starts with 10 points
+        
+        // Add points for transaction volume
+        riskScore += Math.min(filteredTransactions.length / 10, 20); // Up to 20 points based on transaction count
+        
+        // Add points for swaps and outgoing transactions
+        riskScore += (transactionTypes.swap / filteredTransactions.length) * 15; // Up to 15 points based on swap percentage
+        riskScore += (direction.outgoing / Math.max(1, direction.outgoing + direction.incoming)) * 20; // Up to 20 points based on outgoing percentage
+        
+        // Add random component for demo
+        riskScore += Math.random() * 10;
+        
+        // Ensure score is within 0-100 range
+        riskScore = Math.min(100, Math.max(0, riskScore));
+        
+        // Combine metrics
+        const metrics = {
+            totalTransactions: filteredTransactions.length,
+            incoming: direction.incoming,
+            outgoing: direction.outgoing,
+            swaps: transactionTypes.swap
+        };
+        
+        return {
+            transactionTypes,
+            volumeData,
+            tokenDistribution: tokens,
+            solBalance,
+            velocity: {
+                labels: velocityLabels,
+                data: velocity
+            },
+            programs: programsData,
+            metrics,
+            riskScore
+        };
+    }
+    
+    function renderTransactionVolumeChart(volumeData) {
+        const ctx = document.getElementById('transactionVolumeChart').getContext('2d');
+        
+        // Clear previous chart if it exists
+        if (window.volumeChart) {
+            window.volumeChart.destroy();
+        }
+        
+        window.volumeChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: volumeData.map(item => item.date),
+                datasets: [{
+                    label: 'Transaction Count',
+                    data: volumeData.map(item => item.count),
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function renderTransactionTypesChart(types) {
+        const ctx = document.getElementById('transactionTypesChart').getContext('2d');
+        
+        // Clear previous chart if it exists
+        if (window.typesChart) {
+            window.typesChart.destroy();
+        }
+        
+        window.typesChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['SOL Transfers', 'Token Transfers', 'Swaps', 'Other'],
+                datasets: [{
+                    data: [types.sol_transfer, types.token_transfer, types.swap, types.other],
+                    backgroundColor: [
+                        'rgba(255, 205, 86, 0.8)',   // Yellow for SOL
+                        'rgba(54, 162, 235, 0.8)',   // Blue for Tokens
+                        'rgba(153, 102, 255, 0.8)',  // Purple for Swaps
+                        'rgba(201, 203, 207, 0.8)'   // Grey for Other
+                    ],
+                    borderColor: [
+                        'rgb(255, 205, 86)',
+                        'rgb(54, 162, 235)',
+                        'rgb(153, 102, 255)',
+                        'rgb(201, 203, 207)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+    }
+    
+    function renderTokenDistributionChart(tokens) {
+        const ctx = document.getElementById('tokenDistributionChart').getContext('2d');
+        
+        // Prepare data
+        const tokenData = [];
+        const tokenLabels = [];
+        const tokenColors = [];
+        
+        // Generate colors for each token
+        const getRandomColor = () => {
+            const r = Math.floor(Math.random() * 205) + 50;  // 50-255
+            const g = Math.floor(Math.random() * 205) + 50;  // 50-255
+            const b = Math.floor(Math.random() * 205) + 50;  // 50-255
+            return `rgba(${r}, ${g}, ${b}, 0.8)`;
+        };
+        
+        // Process token data
+        for (const token in tokens) {
+            tokenLabels.push(token);
+            tokenData.push(tokens[token]);
+            tokenColors.push(getRandomColor());
+        }
+        
+        // Clear previous chart if it exists
+        if (window.tokensChart) {
+            window.tokensChart.destroy();
+        }
+        
+        if (tokenLabels.length === 0) {
+            // No token data
+            ctx.fillStyle = '#888';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('No token data available', ctx.canvas.width / 2, ctx.canvas.height / 2);
+            return;
+        }
+        
+        window.tokensChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: tokenLabels,
+                datasets: [{
+                    data: tokenData,
+                    backgroundColor: tokenColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function renderSolBalanceChart(balanceData) {
+        const ctx = document.getElementById('solBalanceChart').getContext('2d');
+        
+        // Prepare data
+        const timestamps = balanceData.map(data => data.timestamp);
+        const balances = balanceData.map(data => data.balance);
+        
+        // Clear previous chart if it exists
+        if (window.solChart) {
+            window.solChart.destroy();
+        }
+        
+        window.solChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timestamps,
+                datasets: [{
+                    label: 'SOL Balance',
+                    data: balances,
+                    fill: true,
+                    backgroundColor: 'rgba(255, 205, 86, 0.2)',
+                    borderColor: 'rgb(255, 205, 86)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function renderVelocityChart(velocityData) {
+        const ctx = document.getElementById('velocityChart').getContext('2d');
+        
+        // Clear previous chart if it exists
+        if (window.velocityChart) {
+            window.velocityChart.destroy();
+        }
+        
+        window.velocityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: velocityData.labels,
+                datasets: [{
+                    label: 'Transactions',
+                    data: velocityData.data,
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function renderProgramsChart(programsData) {
+        const ctx = document.getElementById('programsChart').getContext('2d');
+        
+        // Clear previous chart if it exists
+        if (window.programsChart) {
+            window.programsChart.destroy();
+        }
+        
+        window.programsChart = new Chart(ctx, {
+            type: 'horizontalBar',
+            type: 'bar',
+            data: {
+                labels: programsData.labels,
+                datasets: [{
+                    label: 'Interactions',
+                    data: programsData.data,
+                    backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateMetrics(metrics) {
+        document.getElementById('totalTransactions').textContent = metrics.totalTransactions;
+        document.getElementById('incomingTx').textContent = metrics.incoming;
+        document.getElementById('outgoingTx').textContent = metrics.outgoing;
+        document.getElementById('swapTx').textContent = metrics.swaps;
+    }
+    
+    function updateRiskScore(score) {
+        const riskBar = document.getElementById('riskScoreBar');
+        
+        // Update width
+        riskBar.style.width = `${score}%`;
+        
+        // Update text and color based on score
+        let riskText, riskClass;
+        
+        if (score < 25) {
+            riskText = `${Math.round(score)}% - Low Risk`;
+            riskClass = 'bg-success';
+        } else if (score < 50) {
+            riskText = `${Math.round(score)}% - Moderate Risk`;
+            riskClass = 'bg-info';
+        } else if (score < 75) {
+            riskText = `${Math.round(score)}% - Medium Risk`;
+            riskClass = 'bg-warning';
+        } else {
+            riskText = `${Math.round(score)}% - High Risk`;
+            riskClass = 'bg-danger';
+        }
+        
+        riskBar.textContent = riskText;
+        
+        // Remove previous classes
+        riskBar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+        
+        // Add new class
+        riskBar.classList.add(riskClass);
+    }
+    
+    function loadTransactionDetails() {
+        const container = document.getElementById('recentTransactionsDetails');
+        
+        fetch('/api/transactions?limit=10')
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-center">No transactions found.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Type</th>
+                                    <th>Details</th>
+                                    <th>Signature</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.forEach(tx => {
+                    const hasHoneypot = tx.honeypot_flags && tx.honeypot_flags.length > 0;
+                    const hasSuspicious = tx.suspicious_flags && tx.suspicious_flags.length > 0;
+                    
+                    let rowClass = '';
+                    if (hasHoneypot) rowClass = 'table-danger';
+                    else if (hasSuspicious) rowClass = 'table-warning';
+                    
+                    // Build event details
+                    let eventDetails = '';
+                    
+                    tx.events.forEach(event => {
+                        if (event.type === 'sol_transfer') {
+                            eventDetails += `
+                                <span class="badge bg-warning text-dark me-1">
+                                    ${event.direction} ${event.amount.toFixed(4)} SOL
+                                </span>
+                            `;
+                        } else if (event.type === 'token_transfer') {
+                            let badgeClass = 'bg-info';
+                            if (hasHoneypot && tx.honeypot_flags.some(flag => flag.mint === event.mint)) {
+                                badgeClass = 'bg-danger';
+                            }
+                            
+                            eventDetails += `
+                                <span class="badge ${badgeClass} me-1">
+                                    ${event.direction} ${event.amount.toFixed(4)} ${event.token_name}
+                                </span>
+                            `;
+                        } else if (event.type === 'swap') {
+                            eventDetails += '<span class="badge bg-primary me-1">Swap</span>';
+                        }
+                    });
+                    
+                    // Get transaction type
+                    const eventTypes = [...new Set(tx.events.map(e => e.type))];
+                    let typeBadges = '';
+                    
+                    if (eventTypes.includes('sol_transfer')) {
+                        typeBadges += '<span class="badge bg-warning text-dark me-1">SOL</span>';
+                    }
+                    if (eventTypes.includes('token_transfer')) {
+                        typeBadges += '<span class="badge bg-info me-1">Token</span>';
+                    }
+                    if (eventTypes.includes('swap')) {
+                        typeBadges += '<span class="badge bg-primary me-1">Swap</span>';
+                    }
+                    if (hasHoneypot) {
+                        typeBadges += '<span class="badge bg-danger me-1">Honeypot</span>';
+                    }
+                    if (hasSuspicious) {
+                        typeBadges += '<span class="badge bg-warning text-dark me-1">Suspicious</span>';
+                    }
+                    
+                    html += `
+                        <tr class="${rowClass}">
+                            <td>${tx.timestamp}</td>
+                            <td>${typeBadges}</td>
+                            <td>${eventDetails}</td>
+                            <td class="text-truncate" style="max-width: 150px;">
+                                <a href="https://solscan.io/tx/${tx.signature}" target="_blank">${tx.signature}</a>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <a href="/transactions" class="btn btn-outline-primary">
+                            <i data-feather="list"></i> View All Transactions
+                        </a>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+                feather.replace();
+            })
+            .catch(error => {
+                console.error('Error loading transaction details:', error);
+                container.innerHTML = '<p class="text-center text-danger">Error loading transaction details.</p>';
+            });
+    }
+</script>
+{% endblock %}

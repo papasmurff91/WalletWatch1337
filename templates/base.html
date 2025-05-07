@@ -27,7 +27,17 @@
                         <a class="nav-link {% if request.path == '/transactions' %}active{% endif %}" href="/transactions">Transactions</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/analytics' %}active{% endif %}" href="/analytics">
+                            <i data-feather="bar-chart-2"></i> Analytics
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == '/honeypots' %}active{% endif %}" href="/honeypots">Honeypots</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/risk-score' %}active{% endif %}" href="/risk-score">
+                            <i data-feather="activity"></i> Risk Score
+                        </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/suspicious' %}active{% endif %}" href="/suspicious">

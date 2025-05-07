@@ -48,6 +48,16 @@ def suspicious():
     """Render the suspicious activity page"""
     return render_template('suspicious.html', wallet_address=wallet_address)
 
+@app.route('/analytics')
+def analytics():
+    """Render the transaction analytics page"""
+    return render_template('analytics.html', wallet_address=wallet_address)
+    
+@app.route('/risk-score')
+def risk_score():
+    """Render the honeypot risk score page"""
+    return render_template('risk_score.html', wallet_address=wallet_address)
+
 @app.route('/api/transactions')
 def api_transactions():
     """Get transaction history"""

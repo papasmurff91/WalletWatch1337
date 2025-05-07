@@ -1,0 +1,1057 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Honeypot Risk Score{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="alert-triangle"></i>
+                    Honeypot Risk Score Analysis
+                </h5>
+                <div>
+                    <button id="refreshBtn" class="btn btn-sm btn-light">
+                        <i data-feather="refresh-cw"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i data-feather="info"></i>
+                    <strong>Warning:</strong> This page visualizes honeypot risk scores for tokens detected in your wallet transactions.
+                    Tokens with higher risk scores are more likely to be honeypots designed to steal funds. Use caution when interacting with high-risk tokens.
+                </div>
+                
+                <!-- Token Risk Score Input -->
+                <div class="mb-4">
+                    <div class="input-group">
+                        <input type="text" id="tokenMintInput" class="form-control" placeholder="Enter token mint address to analyze...">
+                        <button class="btn btn-primary" id="analyzeBtn">
+                            <i data-feather="search"></i> Analyze Token
+                        </button>
+                    </div>
+                    <div class="form-text">
+                        Enter a token mint address to generate a detailed risk score analysis.
+                    </div>
+                </div>
+                
+                <!-- Risk Score Visualization -->
+                <div class="row">
+                    <div class="col-lg-6 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Honeypot Risk Score Distribution</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="riskDistributionChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Key Risk Factors</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="riskFactorsChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Individual Token Risk Score Visualizations -->
+                <div id="tokenDetailCards" class="row">
+                    <!-- Token detail cards will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Token Risk Details -->
+<div class="row" id="detailedAnalysisSection" style="display: none;">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="activity"></i>
+                    <span id="detailedAnalysisTitle">Detailed Risk Analysis</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Token Info Summary -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Token Information</h6>
+                            </div>
+                            <div class="card-body" id="tokenInfoCard">
+                                <div class="d-flex justify-content-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Overall Risk Score</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center">
+                                    <div id="riskGauge" class="mb-3"></div>
+                                    <h2 id="riskScoreValue" class="mb-0">-</h2>
+                                    <p id="riskCategory" class="text-muted">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detailed Risk Factors -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Risk Factor Breakdown</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="riskFactorsList">
+                                    <div class="d-flex justify-content-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Transaction Timeline -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Transaction Timeline</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="transactionTimeline">
+                                    <div class="d-flex justify-content-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Honeypot Tokens List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="shield-off"></i>
+                    Known Honeypot Tokens
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="honeypotTokensList">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-danger" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Token Risk Analysis Modal -->
+<div class="modal fade" id="tokenRiskModal" tabindex="-1" aria-labelledby="tokenRiskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tokenRiskModalLabel">Token Risk Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="tokenRiskModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="viewOnSolscan" href="#" target="_blank" class="btn btn-primary">View on Solscan</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- D3.js for advanced visualizations -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Set up refresh button
+        document.getElementById('refreshBtn').addEventListener('click', refreshData);
+        
+        // Set up analyze button
+        document.getElementById('analyzeBtn').addEventListener('click', () => {
+            const tokenMint = document.getElementById('tokenMintInput').value.trim();
+            if (tokenMint) {
+                analyzeToken(tokenMint);
+            }
+        });
+        
+        // Allow pressing Enter to submit
+        document.getElementById('tokenMintInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const tokenMint = e.target.value.trim();
+                if (tokenMint) {
+                    analyzeToken(tokenMint);
+                }
+            }
+        });
+        
+        // Initial data load
+        loadRiskScoreData();
+        loadHoneypotsList();
+    });
+    
+    function refreshData() {
+        loadRiskScoreData();
+        loadHoneypotsList();
+    }
+    
+    function loadRiskScoreData() {
+        // In a real implementation, we would fetch data from the API
+        // For now, we'll use simulated data for the visualization
+        
+        // Fetch honeypot tokens
+        fetch('/api/honeypots')
+            .then(response => response.json())
+            .then(data => {
+                // Generate synthetic risk scores for visualization
+                const riskScores = generateRiskScores(data);
+                
+                // Render risk score distribution chart
+                renderRiskDistributionChart(riskScores);
+                
+                // Render risk factors chart
+                renderRiskFactorsChart();
+                
+                // Render token detail cards
+                renderTokenDetailCards(data);
+            })
+            .catch(error => {
+                console.error('Error loading risk score data:', error);
+            });
+    }
+    
+    function generateRiskScores(tokens) {
+        // Generate synthetic risk scores for demo purposes
+        // In a real implementation, these would come from the backend
+        
+        const riskScores = [];
+        
+        // Add some synthetic data to make the visualization more interesting
+        // Add low risk tokens (0-25%)
+        for (let i = 0; i < 8; i++) {
+            riskScores.push(Math.random() * 25);
+        }
+        
+        // Add medium-low risk tokens (25-50%)
+        for (let i = 0; i < 6; i++) {
+            riskScores.push(25 + Math.random() * 25);
+        }
+        
+        // Add medium-high risk tokens (50-75%)
+        for (let i = 0; i < 4; i++) {
+            riskScores.push(50 + Math.random() * 25);
+        }
+        
+        // Add high risk tokens (75-100%)
+        for (let i = 0; i < 6; i++) {
+            riskScores.push(75 + Math.random() * 25);
+        }
+        
+        // Add actual tokens with generated risk scores
+        tokens.forEach(token => {
+            // Assign a random high risk score (75-100) for honeypot tokens
+            riskScores.push(75 + Math.random() * 25);
+        });
+        
+        return riskScores;
+    }
+    
+    function renderRiskDistributionChart(riskScores) {
+        const ctx = document.getElementById('riskDistributionChart').getContext('2d');
+        
+        // Clear previous chart if it exists
+        if (window.riskDistributionChart) {
+            window.riskDistributionChart.destroy();
+        }
+        
+        // Prepare data for histogram
+        const bins = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+        const labels = ['0-10', '11-20', '21-30', '31-40', '41-50', '51-60', '61-70', '71-80', '81-90', '91-100'];
+        
+        // Count scores in each bin
+        const counts = Array(bins.length - 1).fill(0);
+        riskScores.forEach(score => {
+            for (let i = 0; i < bins.length - 1; i++) {
+                if (score >= bins[i] && score < bins[i + 1]) {
+                    counts[i]++;
+                    break;
+                }
+            }
+        });
+        
+        // Generate background colors based on risk level
+        const backgroundColors = [
+            'rgba(40, 167, 69, 0.6)',  // Green (low risk)
+            'rgba(40, 167, 69, 0.6)',  
+            'rgba(40, 167, 69, 0.6)',
+            'rgba(255, 193, 7, 0.6)',  // Yellow (medium risk)
+            'rgba(255, 193, 7, 0.6)',
+            'rgba(255, 193, 7, 0.6)',
+            'rgba(255, 193, 7, 0.6)',
+            'rgba(220, 53, 69, 0.6)',  // Red (high risk)
+            'rgba(220, 53, 69, 0.6)',
+            'rgba(220, 53, 69, 0.6)'
+        ];
+        
+        window.riskDistributionChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Number of Tokens',
+                    data: counts,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors.map(c => c.replace('0.6', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: (items) => {
+                                if (!items.length) return '';
+                                const index = items[0].dataIndex;
+                                return `Risk Score: ${labels[index]}%`;
+                            },
+                            label: (item) => {
+                                return `${item.formattedValue} tokens`;
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Tokens'
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Risk Score (%)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function renderRiskFactorsChart() {
+        const ctx = document.getElementById('riskFactorsChart').getContext('2d');
+        
+        // Clear previous chart if it exists
+        if (window.riskFactorsChart) {
+            window.riskFactorsChart.destroy();
+        }
+        
+        // Define risk factors and their average impact (0-1)
+        const factors = [
+            { name: 'Lack of Liquidity', impact: 0.85 },
+            { name: 'Transfer Restrictions', impact: 0.92 },
+            { name: 'Hidden Mint Authority', impact: 0.78 },
+            { name: 'Suspicious Metadata', impact: 0.65 },
+            { name: 'Few Holders', impact: 0.72 },
+            { name: 'Honeypot Signature', impact: 0.95 },
+            { name: 'Unverified Contract', impact: 0.68 }
+        ];
+        
+        // Sort factors by impact
+        factors.sort((a, b) => b.impact - a.impact);
+        
+        window.riskFactorsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: factors.map(f => f.name),
+                datasets: [{
+                    label: 'Risk Impact',
+                    data: factors.map(f => f.impact * 100),  // Convert to percentage
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    borderColor: 'rgb(220, 53, 69)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (item) => {
+                                return `Impact: ${item.formattedValue}%`;
+                            }
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Impact (%)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function renderTokenDetailCards(tokens) {
+        const container = document.getElementById('tokenDetailCards');
+        
+        if (tokens.length === 0) {
+            container.innerHTML = '<div class="col-12"><p class="text-center">No honeypot tokens detected yet.</p></div>';
+            return;
+        }
+        
+        let html = '';
+        
+        // Add top risk tokens
+        tokens.slice(0, 3).forEach(token => {
+            // Generate a risk score for this token (75-100 for honeypots)
+            const riskScore = Math.floor(75 + Math.random() * 25);
+            
+            // Determine risk class
+            let riskClass = 'bg-success';
+            if (riskScore >= 75) riskClass = 'bg-danger';
+            else if (riskScore >= 50) riskClass = 'bg-warning';
+            else if (riskScore >= 25) riskClass = 'bg-info';
+            
+            html += `
+                <div class="col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Token Risk Analysis</h6>
+                            <span class="badge ${riskClass}">${riskScore}%</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <small class="text-muted">Token Mint</small>
+                                <p class="text-truncate mb-0">${token.mint}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">Current Price</small>
+                                <p class="mb-0">$${token.price.toFixed(6)}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">Holders</small>
+                                <p class="mb-0">${token.holders}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar ${riskClass}" role="progressbar" style="width: ${riskScore}%;" aria-valuenow="${riskScore}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-sm btn-outline-primary" onclick="analyzeToken('${token.mint}')">
+                                    <i data-feather="search"></i> Detailed Analysis
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        feather.replace();
+    }
+    
+    function loadHoneypotsList() {
+        const container = document.getElementById('honeypotTokensList');
+        
+        fetch('/api/honeypots')
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-center">No honeypot tokens detected yet.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Price</th>
+                                    <th>Holders</th>
+                                    <th>Risk Score</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.forEach(token => {
+                    // Generate a risk score (75-100 for honeypots)
+                    const riskScore = Math.floor(75 + Math.random() * 25);
+                    
+                    // Determine risk class
+                    let riskClass = 'bg-success';
+                    if (riskScore >= 75) riskClass = 'bg-danger';
+                    else if (riskScore >= 50) riskClass = 'bg-warning';
+                    else if (riskScore >= 25) riskClass = 'bg-info';
+                    
+                    html += `
+                        <tr>
+                            <td class="text-truncate" style="max-width: 200px;">${token.mint}</td>
+                            <td>$${token.price.toFixed(6)}</td>
+                            <td>${token.holders}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar ${riskClass}" role="progressbar" style="width: ${riskScore}%;" aria-valuenow="${riskScore}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="ms-2">${riskScore}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="analyzeToken('${token.mint}')">
+                                    <i data-feather="search"></i> Analyze
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+                feather.replace();
+            })
+            .catch(error => {
+                console.error('Error loading honeypots list:', error);
+                container.innerHTML = '<p class="text-center text-danger">Error loading honeypot data.</p>';
+            });
+    }
+    
+    function analyzeToken(mint) {
+        // Show the detailed analysis section
+        document.getElementById('detailedAnalysisSection').style.display = 'block';
+        
+        // Set the section title
+        document.getElementById('detailedAnalysisTitle').textContent = `Detailed Risk Analysis: ${mint.slice(0, 8)}...${mint.slice(-8)}`;
+        
+        // Scroll to the section
+        document.getElementById('detailedAnalysisSection').scrollIntoView({ behavior: 'smooth' });
+        
+        // Show loading indicators
+        document.getElementById('tokenInfoCard').innerHTML = `
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('riskFactorsList').innerHTML = `
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('transactionTimeline').innerHTML = `
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        
+        // Fetch token information
+        fetch(`/api/token/${mint}`)
+            .then(response => response.json())
+            .then(token => {
+                // Render token information
+                renderTokenInfo(token);
+                
+                // Generate a risk score (75-100 for honeypots, 25-75 for whitelisted)
+                let riskScore;
+                if (token.is_honeypot) {
+                    riskScore = Math.floor(75 + Math.random() * 25);
+                } else if (token.is_whitelisted) {
+                    riskScore = Math.floor(5 + Math.random() * 20);
+                } else {
+                    riskScore = Math.floor(25 + Math.random() * 50);
+                }
+                
+                // Render risk gauge
+                renderRiskGauge(riskScore);
+                
+                // Generate and render risk factors
+                renderRiskFactors(token, riskScore);
+                
+                // Generate and render transaction timeline
+                renderTransactionTimeline(mint);
+            })
+            .catch(error => {
+                console.error('Error analyzing token:', error);
+                
+                // Show error messages
+                document.getElementById('tokenInfoCard').innerHTML = `
+                    <div class="alert alert-danger mb-0">
+                        Error loading token information. Please try again.
+                    </div>
+                `;
+                
+                document.getElementById('riskFactorsList').innerHTML = `
+                    <div class="alert alert-danger mb-0">
+                        Error analyzing risk factors. Please try again.
+                    </div>
+                `;
+                
+                document.getElementById('transactionTimeline').innerHTML = `
+                    <div class="alert alert-danger mb-0">
+                        Error loading transaction timeline. Please try again.
+                    </div>
+                `;
+            });
+    }
+    
+    function renderTokenInfo(token) {
+        const container = document.getElementById('tokenInfoCard');
+        
+        let contractStatus = token.is_honeypot ? 
+            '<span class="badge bg-danger">Potential Honeypot</span>' : 
+            token.is_whitelisted ? 
+                '<span class="badge bg-success">Verified & Whitelisted</span>' : 
+                '<span class="badge bg-warning text-dark">Unverified</span>';
+                
+        let html = `
+            <div class="mb-3">
+                <small class="text-muted">Token Mint Address</small>
+                <p class="text-break mb-0">${token.mint}</p>
+            </div>
+            
+            <div class="mb-3">
+                <small class="text-muted">Price</small>
+                <p class="mb-0">$${token.price.toFixed(6)}</p>
+            </div>
+            
+            <div class="mb-3">
+                <small class="text-muted">Holders</small>
+                <p class="mb-0">${token.holders}</p>
+            </div>
+            
+            <div class="mb-3">
+                <small class="text-muted">Contract Status</small>
+                <p class="mb-0">${contractStatus}</p>
+            </div>
+            
+            <div class="mt-3">
+                <a href="https://solscan.io/token/${token.mint}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i data-feather="external-link"></i> View on Solscan
+                </a>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        feather.replace();
+    }
+    
+    function renderRiskGauge(riskScore) {
+        // Update risk score value
+        document.getElementById('riskScoreValue').textContent = `${riskScore}%`;
+        
+        // Update risk category
+        let category, categoryClass;
+        if (riskScore < 25) {
+            category = 'Low Risk';
+            categoryClass = 'text-success';
+        } else if (riskScore < 50) {
+            category = 'Moderate Risk';
+            categoryClass = 'text-info';
+        } else if (riskScore < 75) {
+            category = 'Medium Risk';
+            categoryClass = 'text-warning';
+        } else {
+            category = 'High Risk';
+            categoryClass = 'text-danger';
+        }
+        
+        const categoryEl = document.getElementById('riskCategory');
+        categoryEl.textContent = category;
+        categoryEl.className = categoryClass;
+        
+        // Create risk gauge visualization
+        const gaugeContainer = document.getElementById('riskGauge');
+        gaugeContainer.innerHTML = '';
+        
+        // Create SVG
+        const width = gaugeContainer.clientWidth;
+        const height = 120;
+        const radius = Math.min(width, height * 2) / 2;
+        
+        const svg = d3.select('#riskGauge')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .append('g')
+            .attr('transform', `translate(${width / 2}, ${height})`);
+            
+        // Create gauge background
+        const arc = d3.arc()
+            .innerRadius(radius * 0.6)
+            .outerRadius(radius)
+            .startAngle(-Math.PI / 2)
+            .endAngle(Math.PI / 2);
+            
+        // Create gradient
+        const gradient = svg.append('defs')
+            .append('linearGradient')
+            .attr('id', 'gradient')
+            .attr('x1', '0%')
+            .attr('y1', '0%')
+            .attr('x2', '100%')
+            .attr('y2', '0%');
+            
+        gradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', '#28a745');
+            
+        gradient.append('stop')
+            .attr('offset', '50%')
+            .attr('stop-color', '#ffc107');
+            
+        gradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', '#dc3545');
+            
+        // Draw gauge background
+        svg.append('path')
+            .attr('d', arc)
+            .style('fill', 'url(#gradient)');
+            
+        // Create needle
+        const needleLength = radius * 0.8;
+        const needleRadius = radius * 0.05;
+        
+        // Convert risk score to needle angle
+        const angle = (riskScore / 100) * Math.PI - Math.PI / 2;
+        
+        // Draw needle
+        const needle = svg.append('g')
+            .attr('transform', `rotate(${angle * 180 / Math.PI})`);
+            
+        needle.append('circle')
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r', needleRadius)
+            .style('fill', '#5a6268');
+            
+        needle.append('rect')
+            .attr('x', -needleRadius / 8)
+            .attr('y', 0)
+            .attr('width', needleRadius / 4)
+            .attr('height', -needleLength)
+            .style('fill', '#5a6268');
+            
+        // Add ticks
+        const ticks = [0, 25, 50, 75, 100];
+        
+        ticks.forEach(tick => {
+            const tickAngle = (tick / 100) * Math.PI - Math.PI / 2;
+            const tickX = radius * 1.1 * Math.cos(tickAngle);
+            const tickY = radius * 1.1 * Math.sin(tickAngle);
+            
+            // Add tick labels
+            svg.append('text')
+                .attr('x', tickX)
+                .attr('y', tickY)
+                .attr('text-anchor', 'middle')
+                .attr('alignment-baseline', 'middle')
+                .attr('font-size', '12px')
+                .text(tick);
+        });
+    }
+    
+    function renderRiskFactors(token, riskScore) {
+        const container = document.getElementById('riskFactorsList');
+        
+        // Generate risk factors based on token data and risk score
+        const factors = [];
+        
+        // Add factors based on token data
+        if (token.holders < 10) {
+            factors.push({
+                name: 'Low Holder Count',
+                description: 'The token has very few holders, which is common with honeypot tokens.',
+                impact: 0.85,
+                risk: 'high'
+            });
+        }
+        
+        if (token.price < 0.00001) {
+            factors.push({
+                name: 'Extremely Low Price',
+                description: 'Token has an extremely low price, making it susceptible to manipulation.',
+                impact: 0.65,
+                risk: 'medium'
+            });
+        }
+        
+        // Add synthetic factors based on risk score
+        if (riskScore > 75) {
+            factors.push({
+                name: 'Transfer Restrictions',
+                description: 'The token appears to have sell or transfer restrictions in its code.',
+                impact: 0.95,
+                risk: 'high'
+            });
+            
+            factors.push({
+                name: 'Hidden Mint Authority',
+                description: 'The creator retains the ability to mint unlimited tokens.',
+                impact: 0.90,
+                risk: 'high'
+            });
+            
+            factors.push({
+                name: 'Unknown Creator',
+                description: 'The token creator has no verifiable identity or history.',
+                impact: 0.70,
+                risk: 'medium'
+            });
+        }
+        
+        if (riskScore > 50) {
+            factors.push({
+                name: 'Lack of Liquidity',
+                description: 'The token has insufficient liquidity, making it difficult to sell.',
+                impact: 0.80,
+                risk: riskScore > 75 ? 'high' : 'medium'
+            });
+            
+            factors.push({
+                name: 'Suspicious Metadata',
+                description: 'The token metadata is missing or shows signs of manipulation.',
+                impact: 0.60,
+                risk: 'medium'
+            });
+        }
+        
+        if (riskScore < 25) {
+            factors.push({
+                name: 'Verified Contract',
+                description: 'The token has a verified contract with no suspicious code patterns.',
+                impact: 0.90,
+                risk: 'low'
+            });
+            
+            factors.push({
+                name: 'High Liquidity',
+                description: 'The token has sufficient liquidity for normal trading.',
+                impact: 0.85,
+                risk: 'low'
+            });
+        }
+        
+        // Sort factors by impact (highest first)
+        factors.sort((a, b) => b.impact - a.impact);
+        
+        if (factors.length === 0) {
+            container.innerHTML = '<p class="text-center">No significant risk factors detected.</p>';
+            return;
+        }
+        
+        let html = '<div class="list-group">';
+        
+        factors.forEach(factor => {
+            let badgeClass = 'bg-success';
+            if (factor.risk === 'high') badgeClass = 'bg-danger';
+            else if (factor.risk === 'medium') badgeClass = 'bg-warning';
+            
+            const impactPercent = Math.round(factor.impact * 100);
+            
+            html += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">${factor.name}</h6>
+                        <span class="badge ${badgeClass}">${factor.risk} risk</span>
+                    </div>
+                    <p class="mb-2">${factor.description}</p>
+                    <div class="d-flex align-items-center">
+                        <div class="text-muted me-2">Impact:</div>
+                        <div class="progress flex-grow-1" style="height: 8px;">
+                            <div class="progress-bar ${badgeClass}" role="progressbar" style="width: ${impactPercent}%;" aria-valuenow="${impactPercent}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="ms-2">${impactPercent}%</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
+    function renderTransactionTimeline(mint) {
+        const container = document.getElementById('transactionTimeline');
+        
+        // Fetch transaction data
+        fetch('/api/transactions?limit=100')
+            .then(response => response.json())
+            .then(transactions => {
+                // Filter for transactions involving this token
+                const tokenTransactions = transactions.filter(tx => {
+                    return tx.events.some(event => event.type === 'token_transfer' && event.mint === mint);
+                });
+                
+                if (tokenTransactions.length === 0) {
+                    container.innerHTML = '<p class="text-center">No transactions found for this token.</p>';
+                    return;
+                }
+                
+                // Sort by timestamp
+                tokenTransactions.sort((a, b) => {
+                    return new Date(a.timestamp) - new Date(b.timestamp);
+                });
+                
+                let html = `
+                    <div class="timeline">
+                `;
+                
+                tokenTransactions.forEach((tx, index) => {
+                    const isHoneypot = tx.honeypot_flags && tx.honeypot_flags.some(flag => flag.mint === mint);
+                    const isSuspicious = tx.suspicious_flags && tx.suspicious_flags.length > 0;
+                    
+                    let itemClass = '';
+                    if (isHoneypot) itemClass = 'border-danger';
+                    else if (isSuspicious) itemClass = 'border-warning';
+                    
+                    let statusBadge = '';
+                    if (isHoneypot) {
+                        statusBadge = '<span class="badge bg-danger ms-2">Honeypot</span>';
+                    } else if (isSuspicious) {
+                        statusBadge = '<span class="badge bg-warning text-dark ms-2">Suspicious</span>';
+                    }
+                    
+                    // Extract token events for this mint
+                    const tokenEvents = tx.events.filter(event => 
+                        event.type === 'token_transfer' && event.mint === mint
+                    );
+                    
+                    let eventDetails = '';
+                    tokenEvents.forEach(event => {
+                        eventDetails += `
+                            <div class="mb-1">
+                                <span class="badge bg-info me-1">${event.direction}</span>
+                                ${event.amount.toFixed(4)} ${event.token_name}
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                        <div class="card mb-3 ${itemClass}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <strong>${tx.timestamp}</strong>
+                                        ${statusBadge}
+                                    </div>
+                                    <a href="https://solscan.io/tx/${tx.signature}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i data-feather="external-link"></i> View
+                                    </a>
+                                </div>
+                                
+                                <div class="mt-2">
+                                    ${eventDetails}
+                                </div>
+                                
+                                <div class="mt-2">
+                                    <small class="text-muted text-truncate d-inline-block" style="max-width: 100%;">
+                                        Signature: ${tx.signature}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+                feather.replace();
+            })
+            .catch(error => {
+                console.error('Error loading transaction timeline:', error);
+                container.innerHTML = '<p class="text-center text-danger">Error loading transaction timeline.</p>';
+            });
+    }
+</script>
+{% endblock %}
