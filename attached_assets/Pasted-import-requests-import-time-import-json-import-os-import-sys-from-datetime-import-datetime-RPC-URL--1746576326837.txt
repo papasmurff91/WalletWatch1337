@@ -1,0 +1,190 @@
+import requests
+import time
+import json
+import os
+import sys
+from datetime import datetime
+
+RPC_URL = "https://api.mainnet-beta.solana.com"
+POLL_INTERVAL = 30
+HONEYPOT_FILE = "honeypots.json"
+LOG_FILE = "wallet_log.txt"
+MAX_RETRIES = 3
+
+WALLET_ADDRESS = sys.argv[1] if len(sys.argv) > 1 else "YOUR_DEFAULT_WALLET_HERE"
+
+TOKEN_MAP = {
+    "So11111111111111111111111111111111111111112": ("Wrapped SOL", 9),
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": ("USDC", 6),
+    "Es9vMFrzaCERz1aZHBKz9ZwrZcpt1mMT8ffvAJhY7kF": ("USDT", 6),
+}
+
+SWAP_PROGRAM_IDS = [
+    "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB",
+    "RVKd61ztZW9GdKz6Y8qEJ4zQ2LkWcE6gY6z7mY3bR2U"
+]
+
+seen_signatures = set()
+
+def log_message(msg):
+    with open(LOG_FILE, "a") as f:
+        f.write(f"[{datetime.utcnow()}] {msg}\n")
+
+def safe_rpc_post(payload):
+    for attempt in range(MAX_RETRIES):
+        try:
+            res = requests.post(RPC_URL, json=payload, timeout=10)
+            data = res.json()
+            return data.get("result")
+        except Exception as e:
+            wait = 2 ** attempt
+            print(f"RPC error: {e} (retrying in {wait}s)")
+            time.sleep(wait)
+    return None
+
+def load_honeypots():
+    if os.path.exists(HONEYPOT_FILE):
+        with open(HONEYPOT_FILE, "r") as f:
+            return set(json.load(f))
+    return set()
+
+def save_honeypots(honeypots):
+    with open(HONEYPOT_FILE, "w") as f:
+        json.dump(list(honeypots), f, indent=2)
+
+def lamports_to_sol(lamports):
+    return lamports / 1_000_000_000
+
+def get_recent_signatures(wallet):
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "getSignaturesForAddress",
+        "params": [wallet, {"limit": 10}]
+    }
+    return safe_rpc_post(payload) or []
+
+def get_transaction(signature):
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "getTransaction",
+        "params": [signature, {"encoding": "jsonParsed"}]
+    }
+    return safe_rpc_post(payload)
+
+def get_token_price_usd(mint):
+    try:
+        api_key = os.getenv("MORALIS_API_KEY")
+        headers = {"accept": "application/json", "X-API-Key": api_key}
+        url = f"https://solana-gateway.moralis.io/token/mainnet/{mint}/price"
+        res = requests.get(url, headers=headers)
+        return float(res.json().get("usdPrice", 0))
+    except:
+        return 0
+
+def decode_transaction(tx, wallet, honeypot_cache):
+    if not tx:
+        return [], False, False, False, []
+
+    try:
+        message = tx.get("transaction", {}).get("message", {})
+        block_time = tx.get("blockTime", 0)
+        instructions = message.get("instructions", [])
+        timestamp = datetime.fromtimestamp(block_time).strftime("%b %d, %Y %H:%M:%S")
+
+        logs = []
+        updated = False
+        sent = False
+        swapped = False
+        worthless = []
+
+        for ix in instructions:
+            program = ix.get("program")
+            program_id = ix.get("programId")
+            parsed = ix.get("parsed", {})
+            ix_type = parsed.get("type", "")
+            info = parsed.get("info", {})
+
+            if program == "system" and ix_type == "transfer":
+                amount = lamports_to_sol(int(info.get("lamports", 0)))
+                direction = "Received" if info.get("destination") == wallet else "Sent"
+                other = info.get("source") if direction == "Received" else info.get("destination")
+                msg = f"{direction} {amount:.4f} SOL {'from' if direction == 'Received' else 'to'} {other} on {timestamp}"
+                logs.append(msg)
+
+            elif program == "spl-token" and ix_type == "transfer":
+                mint = info.get("mint", "")
+                amount = int(info.get("amount", 0))
+                decimals = TOKEN_MAP.get(mint, ("UNKNOWN", 6))[1]
+                token_name = TOKEN_MAP.get(mint, (f"\033[1mHoneypot Token ({mint[:4]}...{mint[-4:]})\033[0m", decimals))[0]
+                formatted = amount / (10 ** decimals)
+                direction = "Received" if info.get("destination") == wallet else "Sent"
+                other = info.get("source") if direction == "Received" else info.get("destination")
+                msg = f"{direction} {formatted:.4f} {token_name} {'from' if direction == 'Received' else 'to'} {other} on {timestamp}"
+                logs.append(msg)
+
+                if "Honeypot" in token_name and mint not in honeypot_cache:
+                    honeypot_cache.add(mint)
+                    updated = True
+
+                if mint in honeypot_cache and direction == "Sent":
+                    sent = True
+
+                if mint in honeypot_cache:
+                    if get_token_price_usd(mint) == 0:
+                        worthless.append(mint)
+
+            if program_id in SWAP_PROGRAM_IDS:
+                swapped = True
+
+        return logs, updated, sent, swapped, worthless
+    except Exception as e:
+        print(f"Decode error: {e}")
+        return [], False, False, False, []
+
+def poll_wallet():
+    print(f"\n\033[1mTracking Wallet:\033[0m {WALLET_ADDRESS}")
+    honeypot_cache = load_honeypots()
+
+    while True:
+        try:
+            signatures = get_recent_signatures(WALLET_ADDRESS)
+            for sig in signatures:
+                signature = sig.get("signature")
+                if signature and signature not in seen_signatures:
+                    seen_signatures.add(signature)
+                    tx = get_transaction(signature)
+                    logs, updated, sent, swapped, zeroed = decode_transaction(tx, WALLET_ADDRESS, honeypot_cache)
+
+                    if logs:
+                        print("\n\033[1mNew Transaction:\033[0m")
+                        for log in logs:
+                            print(log)
+                            log_message(log)
+
+                    if sent:
+                        alert = "\033[1mAlert:\033[0m Honeypot token SENT!"
+                        print(alert)
+                        log_message(alert)
+
+                    if swapped:
+                        alert = "\033[1mAlert:\033[0m Honeypot SWAP detected!"
+                        print(alert)
+                        log_message(alert)
+
+                    for mint in zeroed:
+                        alert = f"\033[1mAlert:\033[0m Token {mint[:4]}...{mint[-4:]} is now WORTHLESS!"
+                        print(alert)
+                        log_message(alert)
+
+                    if updated:
+                        save_honeypots(honeypot_cache)
+
+            time.sleep(POLL_INTERVAL)
+        except Exception as e:
+            print(f"Polling error: {e}")
+            time.sleep(POLL_INTERVAL)
+
+if __name__ == "__main__":
+    poll_wallet()
