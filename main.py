@@ -34,6 +34,11 @@ phishing_detector = None
 def index():
     """Render the main dashboard"""
     return render_template('dashboard.html', wallet_address=wallet_address)
+    
+@app.route('/enhanced-dashboard')
+def enhanced_dashboard():
+    """Render the enhanced dashboard with interactive visualizations"""
+    return render_template('enhanced-dashboard.html', wallet_address=wallet_address)
 
 @app.route('/transactions')
 def transactions():

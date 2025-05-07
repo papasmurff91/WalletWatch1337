@@ -21,10 +21,19 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Dashboard</a>
+                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">
+                            <i data-feather="home"></i> Dashboard
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/transactions' %}active{% endif %}" href="/transactions">Transactions</a>
+                        <a class="nav-link {% if request.path == '/enhanced-dashboard' %}active{% endif %}" href="/enhanced-dashboard">
+                            <i data-feather="layers"></i> Enhanced Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/transactions' %}active{% endif %}" href="/transactions">
+                            <i data-feather="list"></i> Transactions
+                        </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/analytics' %}active{% endif %}" href="/analytics">

@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Enhanced Dashboard{% endblock %}
+
+{% block head %}
+<link href="/static/css/enhanced-dashboard.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="activity"></i>
+                    Solana Wallet Monitor Dashboard
+                </h5>
+                <div>
+                    <span id="refreshIndicator" class="badge bg-info me-2 d-none">Auto-refresh: 60s</span>
+                    <div class="btn-group" role="group">
+                        <button id="refreshDashboardBtn" class="btn btn-sm btn-light">
+                            <i data-feather="refresh-cw"></i> Refresh
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="visually-hidden">Toggle Dropdown</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item time-range-btn active" href="#" data-range="1d">Last 24 Hours</a></li>
+                            <li><a class="dropdown-item time-range-btn" href="#" data-range="7d">Last 7 Days</a></li>
+                            <li><a class="dropdown-item time-range-btn" href="#" data-range="30d">Last 30 Days</a></li>
+                            <li><a class="dropdown-item time-range-btn" href="#" data-range="all">All Time</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/settings">Settings</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i data-feather="info"></i>
+                    Monitoring wallet: <strong>{{ wallet_address }}</strong>
+                </div>
+                
+                <!-- Dashboard Summary -->
+                <section id="dashboardSummary" class="mb-4">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Risk Analysis -->
+                <section class="mb-4">
+                    <h5 class="border-bottom pb-2">
+                        <i data-feather="alert-triangle"></i>
+                        Risk Analysis
+                    </h5>
+                    <div id="riskAnalysis">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Transaction Volume -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h6 class="card-title mb-0">
+                    <i data-feather="bar-chart-2"></i>
+                    Transaction Volume
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="transactionVolumeChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transaction Types -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h6 class="card-title mb-0">
+                    <i data-feather="pie-chart"></i>
+                    Transaction Types
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="transactionTypesChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Token Distribution and Program Interactions -->
+<div class="row mb-4">
+    <!-- Token Distribution -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h6 class="card-title mb-0">
+                    <i data-feather="pie-chart"></i>
+                    Token Distribution
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="tokenDistributionChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Program Interactions -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h6 class="card-title mb-0">
+                    <i data-feather="code"></i>
+                    Program Interactions
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="programsChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Honeypot and Recent Transactions -->
+<div class="row mb-4">
+    <!-- Honeypot Detections -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-danger text-white">
+                <h6 class="card-title mb-0">
+                    <i data-feather="alert-octagon"></i>
+                    Honeypot Detections
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="honeypotDetections">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Transactions -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h6 class="card-title mb-0">
+                    <i data-feather="list"></i>
+                    Recent Transactions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="recentTransactions">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Swap Activity and Suspicious Activity -->
+<div class="row mb-4">
+    <!-- Swap Activity -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h6 class="card-title mb-0">
+                    <i data-feather="repeat"></i>
+                    Swap Activity
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="swapTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="jupiter-tab" data-bs-toggle="tab" data-bs-target="#jupiter-content" type="button" role="tab" aria-controls="jupiter-content" aria-selected="true">Jupiter</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="raydium-tab" data-bs-toggle="tab" data-bs-target="#raydium-content" type="button" role="tab" aria-controls="raydium-content" aria-selected="false">Raydium</button>
+                    </li>
+                </ul>
+                <div class="tab-content pt-3" id="swapTabsContent">
+                    <div class="tab-pane fade show active" id="jupiter-content" role="tabpanel" aria-labelledby="jupiter-tab">
+                        <div id="jupiterSwaps">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="raydium-content" role="tabpanel" aria-labelledby="raydium-tab">
+                        <div id="raydiumSwaps">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Suspicious Activity -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="card-title mb-0">
+                    <i data-feather="alert-triangle"></i>
+                    Suspicious Activity
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="suspiciousActivities">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Details Modal -->
+<div class="modal fade" id="transactionDetailsModal" tabindex="-1" aria-labelledby="transactionDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="transactionDetailsModalLabel">Transaction Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Transaction details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Dashboard JS -->
+<script src="/static/js/enhanced-dashboard.js"></script>
+{% endblock %}
