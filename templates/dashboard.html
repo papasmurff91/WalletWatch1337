@@ -1,282 +1,243 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solana Wallet Monitor - Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/css/style.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i data-feather="shield"></i>
-                Solana Wallet Monitor
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/transactions">Transactions</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/honeypots">Honeypots</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/settings">Settings</a>
-                    </li>
-                </ul>
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="user"></i>
+                    Monitored Wallet
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="wallet-address" id="walletAddress">{{ wallet_address }}</p>
+                <a href="https://solscan.io/account/{{ wallet_address }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    View on Solscan
+                </a>
             </div>
         </div>
-    </nav>
+    </div>
+</div>
 
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0">
-                            <i data-feather="user"></i>
-                            Monitored Wallet
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="wallet-address" id="walletAddress">{{ wallet_address }}</p>
-                        <a href="https://solscan.io/account/{{ wallet_address }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                            View on Solscan
-                        </a>
-                    </div>
-                </div>
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="alert-triangle"></i>
+                    Detected Honeypots
+                </h5>
             </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-danger text-white">
-                        <h5 class="card-title mb-0">
-                            <i data-feather="alert-triangle"></i>
-                            Detected Honeypots
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="honeypotList">
-                            <p class="text-center">Loading honeypot data...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="card-title mb-0">
-                            <i data-feather="check-circle"></i>
-                            Whitelisted Tokens
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="whitelistList">
-                            <p class="text-center">Loading whitelist data...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="card-title mb-0">
-                            <i data-feather="activity"></i>
-                            Recent Transactions
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="transactionList">
-                            <p class="text-center">Loading transaction data...</p>
-                        </div>
-                    </div>
+            <div class="card-body">
+                <div id="honeypotList">
+                    <p class="text-center">Loading honeypot data...</p>
                 </div>
             </div>
         </div>
     </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="check-circle"></i>
+                    Whitelisted Tokens
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="whitelistList">
+                    <p class="text-center">Loading whitelist data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/dashboard.js"></script>
-    <script>
-        // Initialize Feather icons
-        document.addEventListener('DOMContentLoaded', () => {
-            feather.replace();
-            
-            // Load dashboard data
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="activity"></i>
+                    Recent Transactions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="transactionList">
+                    <p class="text-center">Loading transaction data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+<script>
+    // Initialize dashboard data when document is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        // Load dashboard data
+        loadHoneypots();
+        loadWhitelist();
+        loadTransactions();
+        
+        // Refresh data every 30 seconds
+        setInterval(() => {
             loadHoneypots();
             loadWhitelist();
             loadTransactions();
-            
-            // Refresh data every 30 seconds
-            setInterval(() => {
-                loadHoneypots();
-                loadWhitelist();
-                loadTransactions();
-            }, 30000);
-        });
-        
-        function loadHoneypots() {
-            fetch('/api/honeypots')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('honeypotList');
-                    
-                    if (data.length === 0) {
-                        container.innerHTML = '<p class="text-center">No honeypot tokens detected yet.</p>';
-                        return;
-                    }
-                    
-                    let html = '<ul class="list-group">';
-                    data.forEach(token => {
-                        html += `
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="badge bg-danger me-2">Honeypot</span>
-                                    ${token.mint.slice(0, 8)}...${token.mint.slice(-8)}
-                                </div>
-                                <div>
-                                    <span class="badge bg-secondary">${token.holders} holders</span>
-                                    <button class="btn btn-sm btn-outline-success ms-2" onclick="whitelistToken('${token.mint}')">
-                                        Whitelist
-                                    </button>
-                                </div>
-                            </li>
-                        `;
-                    });
-                    html += '</ul>';
-                    container.innerHTML = html;
-                })
-                .catch(error => {
-                    console.error('Error loading honeypots:', error);
-                    document.getElementById('honeypotList').innerHTML = 
-                        '<p class="text-center text-danger">Error loading honeypot data.</p>';
-                });
-        }
-        
-        function loadWhitelist() {
-            fetch('/api/whitelist')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('whitelistList');
-                    
-                    if (data.length === 0) {
-                        container.innerHTML = '<p class="text-center">No whitelisted tokens yet.</p>';
-                        return;
-                    }
-                    
-                    let html = '<ul class="list-group">';
-                    data.forEach(token => {
-                        html += `
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="badge bg-success me-2">Safe</span>
-                                    ${token.name}
-                                </div>
-                                <div>
-                                    <span class="badge bg-primary">$${token.price.toFixed(4)}</span>
-                                </div>
-                            </li>
-                        `;
-                    });
-                    html += '</ul>';
-                    container.innerHTML = html;
-                })
-                .catch(error => {
-                    console.error('Error loading whitelist:', error);
-                    document.getElementById('whitelistList').innerHTML = 
-                        '<p class="text-center text-danger">Error loading whitelist data.</p>';
-                });
-        }
-        
-        function loadTransactions() {
-            fetch('/api/transactions?limit=5')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('transactionList');
-                    
-                    if (data.length === 0) {
-                        container.innerHTML = '<p class="text-center">No transactions detected yet.</p>';
-                        return;
-                    }
-                    
-                    let html = '<div class="list-group">';
-                    data.forEach(tx => {
-                        let eventSummary = '';
-                        tx.events.forEach(event => {
-                            if (event.type === 'sol_transfer') {
-                                eventSummary += `<span class="badge bg-warning text-dark me-1">
-                                    ${event.direction} ${event.amount.toFixed(4)} SOL
-                                </span>`;
-                            } else if (event.type === 'token_transfer') {
-                                let badgeClass = 'bg-info';
-                                // Check if this is a honeypot token
-                                tx.honeypot_flags.forEach(flag => {
-                                    if (flag.mint === event.mint) {
-                                        badgeClass = 'bg-danger';
-                                    }
-                                });
-                                
-                                eventSummary += `<span class="badge ${badgeClass} me-1">
-                                    ${event.direction} ${event.amount.toFixed(4)} ${event.token_name}
-                                </span>`;
-                            } else if (event.type === 'swap') {
-                                eventSummary += `<span class="badge bg-primary me-1">Swap</span>`;
-                            }
-                        });
-                        
-                        html += `
-                            <a href="https://solscan.io/tx/${tx.signature}" target="_blank" class="list-group-item list-group-item-action">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1 text-truncate" style="max-width: 60%;">${tx.signature}</h6>
-                                    <small>${tx.timestamp}</small>
-                                </div>
-                                <div class="mt-2">
-                                    ${eventSummary}
-                                </div>
-                            </a>
-                        `;
-                    });
-                    html += '</div>';
-                    container.innerHTML = html;
-                })
-                .catch(error => {
-                    console.error('Error loading transactions:', error);
-                    document.getElementById('transactionList').innerHTML = 
-                        '<p class="text-center text-danger">Error loading transaction data.</p>';
-                });
-        }
-        
-        function whitelistToken(mint) {
-            fetch(`/api/whitelist/${mint}`, {
-                method: 'POST'
-            })
+        }, 30000);
+    });
+    
+    function loadHoneypots() {
+        fetch('/api/honeypots')
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    loadHoneypots();
-                    loadWhitelist();
+                const container = document.getElementById('honeypotList');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-center">No honeypot tokens detected yet.</p>';
+                    return;
                 }
+                
+                let html = '<ul class="list-group">';
+                data.forEach(token => {
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-danger me-2">Honeypot</span>
+                                ${token.mint.slice(0, 8)}...${token.mint.slice(-8)}
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary">${token.holders} holders</span>
+                                <button class="btn btn-sm btn-outline-success ms-2" onclick="whitelistToken('${token.mint}')">
+                                    Whitelist
+                                </button>
+                            </div>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                container.innerHTML = html;
             })
             .catch(error => {
-                console.error('Error whitelisting token:', error);
-                alert('Error whitelisting token. Please try again.');
+                console.error('Error loading honeypots:', error);
+                document.getElementById('honeypotList').innerHTML = 
+                    '<p class="text-center text-danger">Error loading honeypot data.</p>';
             });
-        }
-    </script>
-</body>
-</html>
+    }
+    
+    function loadWhitelist() {
+        fetch('/api/whitelist')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('whitelistList');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-center">No whitelisted tokens yet.</p>';
+                    return;
+                }
+                
+                let html = '<ul class="list-group">';
+                data.forEach(token => {
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-success me-2">Safe</span>
+                                ${token.name}
+                            </div>
+                            <div>
+                                <span class="badge bg-primary">$${token.price.toFixed(4)}</span>
+                            </div>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading whitelist:', error);
+                document.getElementById('whitelistList').innerHTML = 
+                    '<p class="text-center text-danger">Error loading whitelist data.</p>';
+            });
+    }
+    
+    function loadTransactions() {
+        fetch('/api/transactions?limit=5')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('transactionList');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-center">No transactions detected yet.</p>';
+                    return;
+                }
+                
+                let html = '<div class="list-group">';
+                data.forEach(tx => {
+                    let eventSummary = '';
+                    tx.events.forEach(event => {
+                        if (event.type === 'sol_transfer') {
+                            eventSummary += `<span class="badge bg-warning text-dark me-1">
+                                ${event.direction} ${event.amount.toFixed(4)} SOL
+                            </span>`;
+                        } else if (event.type === 'token_transfer') {
+                            let badgeClass = 'bg-info';
+                            // Check if this is a honeypot token
+                            tx.honeypot_flags.forEach(flag => {
+                                if (flag.mint === event.mint) {
+                                    badgeClass = 'bg-danger';
+                                }
+                            });
+                            
+                            eventSummary += `<span class="badge ${badgeClass} me-1">
+                                ${event.direction} ${event.amount.toFixed(4)} ${event.token_name}
+                            </span>`;
+                        } else if (event.type === 'swap') {
+                            eventSummary += `<span class="badge bg-primary me-1">Swap</span>`;
+                        }
+                    });
+                    
+                    html += `
+                        <a href="https://solscan.io/tx/${tx.signature}" target="_blank" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 text-truncate" style="max-width: 60%;">${tx.signature}</h6>
+                                <small>${tx.timestamp}</small>
+                            </div>
+                            <div class="mt-2">
+                                ${eventSummary}
+                            </div>
+                        </a>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading transactions:', error);
+                document.getElementById('transactionList').innerHTML = 
+                    '<p class="text-center text-danger">Error loading transaction data.</p>';
+            });
+    }
+    
+    function whitelistToken(mint) {
+        fetch(`/api/whitelist/${mint}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadHoneypots();
+                loadWhitelist();
+            }
+        })
+        .catch(error => {
+            console.error('Error whitelisting token:', error);
+            alert('Error whitelisting token. Please try again.');
+        });
+    }
+</script>
+{% endblock %}

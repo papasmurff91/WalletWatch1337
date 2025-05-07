@@ -1,202 +1,211 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solana Wallet Monitor - Settings</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/css/style.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i data-feather="shield"></i>
-                Solana Wallet Monitor
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/transactions">Transactions</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/honeypots">Honeypots</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/settings">Settings</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0">
-                            <i data-feather="settings"></i>
-                            Configuration
-                        </h5>
+{% block title %}Solana Wallet Monitor - Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="settings"></i>
+                    Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <p>
+                        <strong>Note:</strong> These settings are read-only in the web interface.
+                        To change these values, you need to modify the environment variables or configuration
+                        files and restart the application.
+                    </p>
+                </div>
+                
+                <div class="mb-4">
+                    <h6>Wallet Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Monitored Wallet Address</label>
+                                <input type="text" class="form-control" value="{{ wallet_address }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Solana Explorer</label>
+                                <a href="https://solscan.io/account/{{ wallet_address }}" target="_blank" class="btn btn-outline-primary d-block">View on Solscan</a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="alert alert-info">
-                            <p>
-                                <strong>Note:</strong> These settings are read-only in the web interface.
-                                To change these values, you need to modify the environment variables or configuration
-                                files and restart the application.
-                            </p>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <h6>Wallet Information</h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">Monitored Wallet Address</label>
-                                        <input type="text" class="form-control" value="{{ wallet_address }}" readonly>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">Solana Explorer</label>
-                                        <a href="https://solscan.io/account/{{ wallet_address }}" target="_blank" class="btn btn-outline-primary d-block">View on Solscan</a>
-                                    </div>
-                                </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6>Monitoring Settings</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">RPC URL</label>
+                                <input type="text" class="form-control" value="https://api.mainnet-beta.solana.com" readonly>
+                                <div class="form-text">Set using SOLANA_RPC_URL environment variable</div>
                             </div>
                         </div>
-                        
-                        <div class="mb-4">
-                            <h6>Monitoring Settings</h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">RPC URL</label>
-                                        <input type="text" class="form-control" value="https://api.mainnet-beta.solana.com" readonly>
-                                        <div class="form-text">Set using SOLANA_RPC_URL environment variable</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">Poll Interval</label>
-                                        <input type="text" class="form-control" value="30 seconds" readonly>
-                                        <div class="form-text">Set using POLL_INTERVAL environment variable</div>
-                                    </div>
-                                </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Poll Interval</label>
+                                <input type="text" class="form-control" value="30 seconds" readonly>
+                                <div class="form-text">Set using POLL_INTERVAL environment variable</div>
                             </div>
                         </div>
-                        
-                        <div class="mb-4">
-                            <h6>Notification Settings</h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">Discord Webhook</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">Status</span>
-                                            <input type="text" class="form-control" value="Configuration hidden" readonly>
-                                            <span class="input-group-text bg-success text-white">
-                                                <i data-feather="check-circle"></i>
-                                            </span>
-                                        </div>
-                                        <div class="form-text">Set using DISCORD_WEBHOOK_URL environment variable</div>
-                                    </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6>Notification Settings</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Discord Webhook</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Status</span>
+                                    <input type="text" class="form-control" value="Configuration hidden" readonly>
+                                    <span class="input-group-text bg-success text-white">
+                                        <i data-feather="check-circle"></i>
+                                    </span>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">Telegram Integration</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">Status</span>
-                                            <input type="text" class="form-control" value="Configuration hidden" readonly>
-                                            <span class="input-group-text bg-success text-white">
-                                                <i data-feather="check-circle"></i>
-                                            </span>
-                                        </div>
-                                        <div class="form-text">Set using TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables</div>
-                                    </div>
+                                <div class="form-text">Set using DISCORD_WEBHOOK_URL environment variable</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Telegram Integration</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Status</span>
+                                    <input type="text" class="form-control" value="Configuration hidden" readonly>
+                                    <span class="input-group-text bg-success text-white">
+                                        <i data-feather="check-circle"></i>
+                                    </span>
                                 </div>
+                                <div class="form-text">Set using TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables</div>
                             </div>
                         </div>
-                        
-                        <div class="mb-4">
-                            <h6>Known Tokens</h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Mint</th>
-                                            <th>Token Name</th>
-                                            <th>Decimals</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>So11111111111111111111111111111111111111112</td>
-                                            <td>Wrapped SOL</td>
-                                            <td>9</td>
-                                        </tr>
-                                        <tr>
-                                            <td>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</td>
-                                            <td>USDC</td>
-                                            <td>6</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Es9vMFrzaCERz1aZHBKz9ZwrZcpt1mMT8ffvAJhY7kF</td>
-                                            <td>USDT</td>
-                                            <td>6</td>
-                                        </tr>
-                                        <tr>
-                                            <td>7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj</td>
-                                            <td>Bonk</td>
-                                            <td>5</td>
-                                        </tr>
-                                        <tr>
-                                            <td>mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So</td>
-                                            <td>Marinade SOL</td>
-                                            <td>9</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6>Known Tokens</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Mint</th>
+                                    <th>Token Name</th>
+                                    <th>Decimals</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>So11111111111111111111111111111111111111112</td>
+                                    <td>Wrapped SOL</td>
+                                    <td>9</td>
+                                </tr>
+                                <tr>
+                                    <td>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</td>
+                                    <td>USDC</td>
+                                    <td>6</td>
+                                </tr>
+                                <tr>
+                                    <td>Es9vMFrzaCERz1aZHBKz9ZwrZcpt1mMT8ffvAJhY7kF</td>
+                                    <td>USDT</td>
+                                    <td>6</td>
+                                </tr>
+                                <tr>
+                                    <td>7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj</td>
+                                    <td>Bonk</td>
+                                    <td>5</td>
+                                </tr>
+                                <tr>
+                                    <td>mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So</td>
+                                    <td>Marinade SOL</td>
+                                    <td>9</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="form-text">These tokens are pre-configured and won't trigger honeypot detection.</div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6>Interface Settings</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Theme</label>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" id="lightModeBtn" class="btn btn-outline-secondary">
+                                        <i data-feather="sun"></i> Light Mode
+                                    </button>
+                                    <button type="button" id="darkModeBtn" class="btn btn-outline-secondary">
+                                        <i data-feather="moon"></i> Dark Mode
+                                    </button>
+                                </div>
+                                <div class="form-text">Choose between light and dark theme for the user interface</div>
                             </div>
-                            <div class="form-text">These tokens are pre-configured and won't trigger honeypot detection.</div>
                         </div>
-                        
-                        <div class="mb-4">
-                            <h6>Help & Resources</h6>
-                            <div class="list-group">
-                                <a href="https://github.com/your-repository/solana-wallet-monitor" target="_blank" class="list-group-item list-group-item-action">
-                                    <i data-feather="github"></i>
-                                    GitHub Repository
-                                </a>
-                                <a href="https://docs.solana.com/" target="_blank" class="list-group-item list-group-item-action">
-                                    <i data-feather="book"></i>
-                                    Solana Documentation
-                                </a>
-                                <a href="https://discord.gg/solana" target="_blank" class="list-group-item list-group-item-action">
-                                    <i data-feather="message-square"></i>
-                                    Solana Discord
-                                </a>
-                            </div>
-                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6>Help & Resources</h6>
+                    <div class="list-group">
+                        <a href="https://github.com/your-repository/solana-wallet-monitor" target="_blank" class="list-group-item list-group-item-action">
+                            <i data-feather="github"></i>
+                            GitHub Repository
+                        </a>
+                        <a href="https://docs.solana.com/" target="_blank" class="list-group-item list-group-item-action">
+                            <i data-feather="book"></i>
+                            Solana Documentation
+                        </a>
+                        <a href="https://discord.gg/solana" target="_blank" class="list-group-item list-group-item-action">
+                            <i data-feather="message-square"></i>
+                            Solana Discord
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            feather.replace();
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Get the current theme
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        
+        // Set the active button based on current theme
+        if (currentTheme === 'dark') {
+            document.getElementById('darkModeBtn').classList.add('active');
+            document.getElementById('lightModeBtn').classList.remove('active');
+        } else {
+            document.getElementById('lightModeBtn').classList.add('active');
+            document.getElementById('darkModeBtn').classList.remove('active');
+        }
+        
+        // Add click event listeners to theme buttons
+        document.getElementById('lightModeBtn').addEventListener('click', () => {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+            document.getElementById('lightModeBtn').classList.add('active');
+            document.getElementById('darkModeBtn').classList.remove('active');
         });
-    </script>
-</body>
-</html>
+        
+        document.getElementById('darkModeBtn').addEventListener('click', () => {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+            document.getElementById('darkModeBtn').classList.add('active');
+            document.getElementById('lightModeBtn').classList.remove('active');
+        });
+    });
+</script>
+{% endblock %}
