@@ -350,7 +350,7 @@
                                     <div class="progress flex-grow-1 me-2" style="height: 6px;">
                                         <div class="progress-bar bg-${riskClass}" role="progressbar" style="width: ${riskScore}%" aria-valuenow="${riskScore}" aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
-                                    <span>${riskScore}</span>
+                                    <span class="badge rounded-pill p-2" data-risk-score="${riskScore}" data-animated="true">${riskScore}</span>
                                 </div>
                             </td>
                             <td>${formatPrice(token.price)}</td>
@@ -372,6 +372,11 @@
                 
                 // Initialize feather icons
                 feather.replace();
+                
+                // Initialize risk score animations for the honeypot table
+                if (window.riskScoreVisualizer) {
+                    window.riskScoreVisualizer.initializeAll();
+                }
                 
                 // Add event listeners to buttons
                 document.querySelectorAll('.analyze-btn').forEach(btn => {
@@ -477,7 +482,18 @@
                 document.getElementById('tokenMintDisplay').textContent = `Mint: ${mint}`;
                 
                 // Update risk score display
-                document.getElementById('riskScoreValue').textContent = riskScore;
+                const riskScoreElement = document.getElementById('riskScoreValue');
+                riskScoreElement.textContent = riskScore;
+                
+                // Use our new risk score visualizer to animate the score display
+                if (window.riskScoreVisualizer) {
+                    // Update the data attribute for the risk score
+                    riskScoreElement.setAttribute('data-risk-score', riskScore);
+                    
+                    // Apply the animated visualization
+                    window.riskScoreVisualizer.updateRiskScore(riskScoreElement, riskScore);
+                }
+                
                 const riskScoreLabel = document.getElementById('riskScoreLabel');
                 riskScoreLabel.textContent = riskLabel;
                 riskScoreLabel.className = `badge bg-${riskClass}`;
