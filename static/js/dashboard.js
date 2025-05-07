@@ -17,6 +17,8 @@ function refreshData() {
     loadHoneypots();
     loadWhitelist();
     loadFlaggedActivities();
+    loadJupiterSwaps();
+    loadRaydiumSwaps();
 }
 
 /**
@@ -285,5 +287,337 @@ function loadFlaggedActivities() {
         .catch(error => {
             console.error('Error loading suspicious activities:', error);
             flaggedActivitiesContainer.innerHTML = '<p class="text-center text-danger">Error loading suspicious activities data.</p>';
+        });
+}
+
+/**
+ * Load Jupiter swap alerts
+ */
+function loadJupiterSwaps() {
+    const jupiterAlertsContainer = document.getElementById('jupiterSwapAlerts');
+    
+    fetch('/api/swaps/jupiter?limit=3')
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) {
+                jupiterAlertsContainer.innerHTML = '<p class="text-center">No Jupiter swap alerts yet.</p>';
+                return;
+            }
+            
+            let html = '<div class="list-group">';
+            
+            data.forEach(swap => {
+                const swapDetails = swap.swap_details || {};
+                const riskLevel = swapDetails.risk_level || 'low';
+                const riskFactors = swapDetails.risk_factors || [];
+                let riskClass = 'primary';
+                
+                if (riskLevel === 'high') {
+                    riskClass = 'danger';
+                } else if (riskLevel === 'medium') {
+                    riskClass = 'warning';
+                }
+                
+                // Check for associated accounts
+                const associatedAccounts = swap.associated_accounts || [];
+                let accountsHtml = '';
+                
+                if (associatedAccounts.length > 0) {
+                    accountsHtml = '<div class="mt-2"><strong>Associated Accounts:</strong>';
+                    associatedAccounts.forEach(account => {
+                        accountsHtml += `
+                            <div class="mt-1">
+                                <span class="badge bg-info me-1">${account.tag || 'unknown'}</span>
+                                <small>${account.platform || ''} ${account.username ? '@' + account.username : ''}</small>
+                            </div>
+                        `;
+                    });
+                    accountsHtml += '</div>';
+                }
+                
+                html += `
+                    <div class="list-group-item list-group-item-${riskClass}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-${riskClass}">${riskLevel.toUpperCase()} RISK</span>
+                                <span class="ms-2">${swap.timestamp || 'Unknown time'}</span>
+                            </div>
+                            <div>
+                                <small>Jupiter ${swapDetails.jupiter_version || ''}</small>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span class="badge bg-light text-dark me-1">
+                                ${swapDetails.input_amount?.toFixed(4) || '?'} ${swapDetails.input_token || 'Unknown'}
+                            </span>
+                            <i class="fas fa-arrow-right"></i>
+                            <span class="badge ${riskClass === 'danger' ? 'bg-danger' : 'bg-primary'} me-1">
+                                ${swapDetails.output_amount?.toFixed(4) || '?'} ${swapDetails.output_token || 'Unknown'}
+                            </span>
+                        </div>
+                        ${riskFactors.length > 0 ? 
+                            `<div class="mt-2">
+                                <strong>Risk Factors:</strong>
+                                <ul class="mb-0 mt-1">
+                                    ${riskFactors.map(factor => `<li><small>${factor}</small></li>`).join('')}
+                                </ul>
+                            </div>` : ''
+                        }
+                        ${accountsHtml}
+                        <div class="mt-2">
+                            <small class="text-truncate d-inline-block" style="max-width: 100%;">
+                                ${swap.signature || ''}
+                            </small>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            jupiterAlertsContainer.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading Jupiter swaps:', error);
+            jupiterAlertsContainer.innerHTML = '<p class="text-center text-danger">Error loading Jupiter swap data.</p>';
+        });
+}
+
+/**
+ * Load Raydium swap alerts
+ */
+function loadRaydiumSwaps() {
+    const raydiumAlertsContainer = document.getElementById('raydiumSwapAlerts');
+    
+    fetch('/api/swaps/raydium?limit=3')
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) {
+                raydiumAlertsContainer.innerHTML = '<p class="text-center">No Raydium swap alerts yet.</p>';
+                return;
+            }
+            
+            let html = '<div class="list-group">';
+            
+            data.forEach(swap => {
+                const swapDetails = swap.swap_details || {};
+                const riskLevel = swapDetails.risk_level || 'low';
+                const riskFactors = swapDetails.risk_factors || [];
+                let riskClass = 'primary';
+                
+                if (riskLevel === 'high') {
+                    riskClass = 'danger';
+                } else if (riskLevel === 'medium') {
+                    riskClass = 'warning';
+                }
+                
+                html += `
+                    <div class="list-group-item list-group-item-${riskClass}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-${riskClass}">${riskLevel.toUpperCase()} RISK</span>
+                                <span class="ms-2">${swap.timestamp || 'Unknown time'}</span>
+                            </div>
+                            <div>
+                                <small>Raydium</small>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span class="badge bg-light text-dark me-1">
+                                ${swapDetails.input_amount?.toFixed(4) || '?'} ${swapDetails.input_token || 'Unknown'}
+                            </span>
+                            <i class="fas fa-arrow-right"></i>
+                            <span class="badge ${riskClass === 'danger' ? 'bg-danger' : 'bg-primary'} me-1">
+                                ${swapDetails.output_amount?.toFixed(4) || '?'} ${swapDetails.output_token || 'Unknown'}
+                            </span>
+                        </div>
+                        ${riskFactors.length > 0 ? 
+                            `<div class="mt-2">
+                                <strong>Risk Factors:</strong>
+                                <ul class="mb-0 mt-1">
+                                    ${riskFactors.map(factor => `<li><small>${factor}</small></li>`).join('')}
+                                </ul>
+                            </div>` : ''
+                        }
+                        <div class="mt-2">
+                            <small class="text-truncate d-inline-block" style="max-width: 100%;">
+                                ${swap.signature || ''}
+                            </small>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            raydiumAlertsContainer.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading Raydium swaps:', error);
+            raydiumAlertsContainer.innerHTML = '<p class="text-center text-danger">Error loading Raydium swap data.</p>';
+        });
+}
+
+/**
+ * Simulate Jupiter swap alert
+ */
+function simulateJupiterAlert() {
+    const jupiterAlertsContainer = document.getElementById('jupiterSwapAlerts');
+    jupiterAlertsContainer.innerHTML = '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    
+    fetch('/webhooks/jupiter/alerts')
+        .then(response => response.json())
+        .then(data => {
+            let html = '<div class="alert alert-info">Simulated Jupiter Swap Alert</div>';
+            
+            html += '<div class="list-group">';
+            
+            const swap = data;
+            const swapDetails = swap.swap_details || {};
+            const riskAnalysis = swap.risk_analysis || {};
+            const riskLevel = riskAnalysis.overall_risk || 'low';
+            const riskFactors = riskAnalysis.reasons || [];
+            let riskClass = 'primary';
+            
+            if (riskLevel === 'critical' || riskLevel === 'high') {
+                riskClass = 'danger';
+            } else if (riskLevel === 'medium') {
+                riskClass = 'warning';
+            }
+            
+            // Check for associated accounts
+            const associatedAccounts = swap.associated_accounts || [];
+            let accountsHtml = '';
+            
+            if (associatedAccounts.length > 0) {
+                accountsHtml = '<div class="mt-2"><strong>Associated Accounts:</strong>';
+                associatedAccounts.forEach(account => {
+                    accountsHtml += `
+                        <div class="mt-1">
+                            <span class="badge bg-info me-1">${account.tag || 'unknown'}</span>
+                            <small>${account.platform || ''} ${account.username ? '@' + account.username : ''}</small>
+                        </div>
+                    `;
+                });
+                accountsHtml += '</div>';
+            }
+            
+            html += `
+                <div class="list-group-item list-group-item-${riskClass}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-${riskClass}">${riskLevel.toUpperCase()} RISK</span>
+                            <span class="ms-2">${swap.timestamp || 'Unknown time'}</span>
+                        </div>
+                        <div>
+                            <small>Jupiter ${swapDetails.jupiter_version || ''}</small>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-light text-dark me-1">
+                            ${swapDetails.input_amount?.toFixed(4) || '?'} ${swapDetails.input_token || 'Unknown'}
+                        </span>
+                        <i class="fas fa-arrow-right"></i>
+                        <span class="badge ${riskClass === 'danger' ? 'bg-danger' : 'bg-primary'} me-1">
+                            ${swapDetails.output_amount?.toFixed(4) || '?'} ${swapDetails.output_token || 'Unknown'}
+                        </span>
+                    </div>
+                    ${riskFactors.length > 0 ? 
+                        `<div class="mt-2">
+                            <strong>Risk Factors:</strong>
+                            <ul class="mb-0 mt-1">
+                                ${riskFactors.map(factor => `<li><small>${factor}</small></li>`).join('')}
+                            </ul>
+                        </div>` : ''
+                    }
+                    ${accountsHtml}
+                    <div class="mt-2">
+                        <small class="text-truncate d-inline-block" style="max-width: 100%;">
+                            ${swap.signature || ''}
+                        </small>
+                    </div>
+                </div>
+            `;
+            
+            html += '</div>';
+            
+            jupiterAlertsContainer.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading Jupiter alert:', error);
+            jupiterAlertsContainer.innerHTML = '<p class="text-center text-danger">Error loading Jupiter alert data.</p>';
+        });
+}
+
+/**
+ * Simulate Raydium swap alert
+ */
+function simulateRaydiumAlert() {
+    const raydiumAlertsContainer = document.getElementById('raydiumSwapAlerts');
+    raydiumAlertsContainer.innerHTML = '<div class="d-flex justify-content-center"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    
+    fetch('/webhooks/raydium/alerts')
+        .then(response => response.json())
+        .then(data => {
+            let html = '<div class="alert alert-info">Simulated Raydium Swap Alert</div>';
+            
+            html += '<div class="list-group">';
+            
+            const swap = data;
+            const swapDetails = swap.swap_details || {};
+            const riskAnalysis = swap.risk_analysis || {};
+            const riskLevel = riskAnalysis.overall_risk || 'low';
+            const riskFactors = riskAnalysis.reasons || [];
+            let riskClass = 'primary';
+            
+            if (riskLevel === 'critical' || riskLevel === 'high') {
+                riskClass = 'danger';
+            } else if (riskLevel === 'medium') {
+                riskClass = 'warning';
+            }
+            
+            html += `
+                <div class="list-group-item list-group-item-${riskClass}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-${riskClass}">${riskLevel.toUpperCase()} RISK</span>
+                            <span class="ms-2">${swap.timestamp || 'Unknown time'}</span>
+                        </div>
+                        <div>
+                            <small>Raydium</small>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-light text-dark me-1">
+                            ${swapDetails.input_amount?.toFixed(4) || '?'} ${swapDetails.input_token || 'Unknown'}
+                        </span>
+                        <i class="fas fa-arrow-right"></i>
+                        <span class="badge ${riskClass === 'danger' ? 'bg-danger' : 'bg-primary'} me-1">
+                            ${swapDetails.output_amount?.toFixed(4) || '?'} ${swapDetails.output_token || 'Unknown'}
+                        </span>
+                    </div>
+                    ${riskFactors.length > 0 ? 
+                        `<div class="mt-2">
+                            <strong>Risk Factors:</strong>
+                            <ul class="mb-0 mt-1">
+                                ${riskFactors.map(factor => `<li><small>${factor}</small></li>`).join('')}
+                            </ul>
+                        </div>` : ''
+                    }
+                    <div class="mt-2">
+                        <small class="text-truncate d-inline-block" style="max-width: 100%;">
+                            ${swap.signature || ''}
+                        </small>
+                    </div>
+                </div>
+            `;
+            
+            html += '</div>';
+            
+            raydiumAlertsContainer.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading Raydium alert:', error);
+            raydiumAlertsContainer.innerHTML = '<p class="text-center text-danger">Error loading Raydium alert data.</p>';
         });
 }
