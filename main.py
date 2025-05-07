@@ -645,6 +645,7 @@ def api_get_twitter_webhook_status():
 def twitter_webhook_event():
     """
     Handle Twitter webhook events sent to our application
+    Includes functionality to cross-reference Solana addresses with suspicious activity
     """
     # Verify the request is from Twitter using signature validation
     # This is a simplified version - production should use more robust verification
@@ -654,6 +655,27 @@ def twitter_webhook_event():
     
     event_data = request.json
     print(f"Received Twitter webhook event: {json.dumps(event_data)[:200]}...")
+    
+    # Get our social media monitor instance
+    social_monitor = get_social_media_monitor()
+    
+    if social_monitor:
+        # Process the event with the social media monitor
+        actions, suspicious_content = social_monitor.handle_twitter_event(event_data)
+        
+        # If suspicious content was found, record it and send notifications
+        if suspicious_content:
+            for item in suspicious_content:
+                # Log the suspicious content
+                print(f"Found suspicious addresses in tweet by @{item['username']}: {', '.join(item['addresses'])}")
+                
+                # Add to suspicious activity log
+                if suspicious_detector:
+                    for address in item['addresses']:
+                        suspicious_detector.add_suspicious_address(
+                            address, 
+                            f"Mentioned on Twitter by @{item['username']}"
+                        )
     
     # Process the different event types
     # Here we'll check for mention events which would be in for_user -> tweet_create_events
@@ -667,13 +689,35 @@ def twitter_webhook_event():
                 screen_name = tweet['user']['screen_name']
                 # Check if this is a reply to us or a mention of us
                 if 'in_reply_to_status_id' in tweet or 'entities' in tweet and 'user_mentions' in tweet['entities']:
-                    process_twitter_mention(tweet)
+                    # Process the mention specifically (for wallet check requests, etc.)
+                    if social_monitor:
+                        social_monitor.process_twitter_mention(tweet)
+                    else:
+                        process_twitter_mention(tweet)
     
     # Always return a 200 OK to Twitter regardless of processing outcome
     return jsonify({'status': 'ok'}), 200
 
+def get_social_media_monitor():
+    """Get or create a social media monitor instance"""
+    global social_media_monitor, suspicious_detector, honeypot_detector
+    
+    if not hasattr(app, 'social_media_monitor'):
+        # Only create if we have the necessary components
+        if suspicious_detector and monitor and monitor.honeypot_detector:
+            twitter_service = TwitterService()
+            app.social_media_monitor = SocialMediaMonitor(
+                suspicious_detector=suspicious_detector,
+                honeypot_detector=monitor.honeypot_detector,
+                twitter_service=twitter_service
+            )
+        else:
+            app.social_media_monitor = None
+            
+    return app.social_media_monitor
+
 def process_twitter_mention(tweet):
-    """Process a Twitter mention or reply"""
+    """Process a Twitter mention or reply (legacy method)"""
     if not monitor:
         return
         

@@ -1,0 +1,941 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Enhanced Reports{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="file-text"></i>
+                    Enhanced Security Reports
+                </h5>
+                <div>
+                    <button id="generateReportBtn" class="btn btn-sm btn-light">
+                        <i data-feather="file-plus"></i> Generate New Report
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i data-feather="info"></i>
+                    Create comprehensive reports on security incidents, transaction history, and risk assessments.
+                    Reports can be exported in multiple formats for record-keeping or sharing with your team.
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Report Configuration</h6>
+                            </div>
+                            <div class="card-body">
+                                <form id="reportConfigForm">
+                                    <div class="mb-3">
+                                        <label for="reportType" class="form-label">Report Type</label>
+                                        <select class="form-select" id="reportType">
+                                            <option value="security_incident">Security Incident Analysis</option>
+                                            <option value="transaction_history">Transaction History</option>
+                                            <option value="risk_assessment">Risk Assessment</option>
+                                            <option value="honeypot_analysis">Honeypot Token Analysis</option>
+                                            <option value="network_summary">Network Relationship Summary</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Date Range</label>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <input type="date" class="form-control" id="startDate">
+                                                <small class="form-text text-muted">Start Date</small>
+                                            </div>
+                                            <div class="col-6">
+                                                <input type="date" class="form-control" id="endDate">
+                                                <small class="form-text text-muted">End Date</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="securityLevel" class="form-label">Security Level</label>
+                                        <select class="form-select" id="securityLevel">
+                                            <option value="all">All Incidents</option>
+                                            <option value="critical">Critical Only</option>
+                                            <option value="high">High and Critical</option>
+                                            <option value="medium">Medium and Above</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="includeOptions" class="form-label">Include in Report</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeCharts" checked>
+                                            <label class="form-check-label" for="includeCharts">
+                                                Charts and Visualizations
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeRawData" checked>
+                                            <label class="form-check-label" for="includeRawData">
+                                                Raw Data Tables
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeSummary" checked>
+                                            <label class="form-check-label" for="includeSummary">
+                                                Executive Summary
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeRecommendations" checked>
+                                            <label class="form-check-label" for="includeRecommendations">
+                                                Security Recommendations
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="exportFormat" class="form-label">Export Format</label>
+                                        <select class="form-select" id="exportFormat">
+                                            <option value="pdf">PDF Document</option>
+                                            <option value="csv">CSV Spreadsheet</option>
+                                            <option value="json">JSON Data</option>
+                                            <option value="html">HTML Report</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <button type="button" id="previewReportBtn" class="btn btn-primary">
+                                        <i data-feather="eye"></i> Preview Report
+                                    </button>
+                                    <button type="button" id="downloadReportBtn" class="btn btn-success">
+                                        <i data-feather="download"></i> Generate & Download
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Report Preview</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="reportPreview" class="border p-3 rounded" style="height: 400px; overflow-y: auto;">
+                                    <div class="text-center text-muted py-5">
+                                        <i data-feather="file-text" style="width: 48px; height: 48px;"></i>
+                                        <p class="mt-3">Click "Preview Report" to see a sample of your report here</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Saved Reports</h6>
+                                <div>
+                                    <button id="clearReportsBtn" class="btn btn-sm btn-outline-danger">
+                                        <i data-feather="trash-2"></i> Clear All
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Date Generated</th>
+                                                <th>Report Type</th>
+                                                <th>Time Period</th>
+                                                <th>Size</th>
+                                                <th>Format</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="savedReportsTable">
+                                            <!-- Saved reports will be listed here -->
+                                            <tr>
+                                                <td>2025-05-07 10:23 AM</td>
+                                                <td>Security Incident Analysis</td>
+                                                <td>Last 30 days</td>
+                                                <td>1.2 MB</td>
+                                                <td><span class="badge bg-danger">PDF</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary view-report-btn">
+                                                        <i data-feather="eye"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-success download-report-btn">
+                                                        <i data-feather="download"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger delete-report-btn">
+                                                        <i data-feather="trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>2025-05-05 03:15 PM</td>
+                                                <td>Honeypot Token Analysis</td>
+                                                <td>Last 7 days</td>
+                                                <td>845 KB</td>
+                                                <td><span class="badge bg-success">CSV</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary view-report-btn">
+                                                        <i data-feather="eye"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-success download-report-btn">
+                                                        <i data-feather="download"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger delete-report-btn">
+                                                        <i data-feather="trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="noReportsMessage" class="text-center py-3 d-none">
+                                    <p class="text-muted">No saved reports yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="bar-chart-2"></i>
+                    Comparative Security Metrics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i data-feather="info"></i>
+                    Compare your wallet's security metrics against similar wallets to identify areas for improvement.
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Security Score Comparison</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="securityComparisonChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Security Metrics</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Metric</th>
+                                                <th>Your Wallet</th>
+                                                <th>Average</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Incident Rate</td>
+                                                <td>2.3%</td>
+                                                <td>4.7%</td>
+                                                <td><span class="badge bg-success">Better</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Honeypot Exposure</td>
+                                                <td>1.1%</td>
+                                                <td>2.5%</td>
+                                                <td><span class="badge bg-success">Better</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Suspicious Interactions</td>
+                                                <td>5.2%</td>
+                                                <td>3.8%</td>
+                                                <td><span class="badge bg-warning">Worse</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Response Time</td>
+                                                <td>2.1 hrs</td>
+                                                <td>4.5 hrs</td>
+                                                <td><span class="badge bg-success">Better</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Security Practices</td>
+                                                <td>85%</td>
+                                                <td>72%</td>
+                                                <td><span class="badge bg-success">Better</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Security Recommendations</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i data-feather="shield" class="text-success me-2"></i>
+                                                    Reduce Suspicious Interactions
+                                                </h5>
+                                                <p class="card-text">Your wallet has more interactions with suspicious addresses than the average. Consider enabling transaction blocking for suspicious addresses in the countermeasures panel.</p>
+                                                <a href="/countermeasures" class="btn btn-sm btn-outline-primary">Configure Countermeasures</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i data-feather="bell" class="text-warning me-2"></i>
+                                                    Enable SMS Alerts
+                                                </h5>
+                                                <p class="card-text">Your response time to security incidents is good, but it could be improved further by enabling SMS alerts for critical threats.</p>
+                                                <a href="/settings" class="btn btn-sm btn-outline-primary">Configure Alerts</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i data-feather="cpu" class="text-info me-2"></i>
+                                                    Enable ML Detection
+                                                </h5>
+                                                <p class="card-text">Enable the machine learning detection features to further improve your security posture and get early warnings about potential threats.</p>
+                                                <a href="/ml-dashboard" class="btn btn-sm btn-outline-primary">ML Dashboard</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize feather icons
+        feather.replace();
+        
+        // Set default dates for the report form
+        setDefaultDates();
+        
+        // Initialize the comparison chart
+        initSecurityComparisonChart();
+        
+        // Button event handlers
+        document.getElementById('previewReportBtn').addEventListener('click', previewReport);
+        document.getElementById('downloadReportBtn').addEventListener('click', downloadReport);
+        document.getElementById('generateReportBtn').addEventListener('click', generateNewReport);
+        document.getElementById('clearReportsBtn').addEventListener('click', clearAllReports);
+        
+        // Add event handlers for saved report actions
+        document.querySelectorAll('.view-report-btn').forEach(btn => {
+            btn.addEventListener('click', viewReport);
+        });
+        
+        document.querySelectorAll('.download-report-btn').forEach(btn => {
+            btn.addEventListener('click', downloadSavedReport);
+        });
+        
+        document.querySelectorAll('.delete-report-btn').forEach(btn => {
+            btn.addEventListener('click', deleteReport);
+        });
+        
+        // Update preview when report type changes
+        document.getElementById('reportType').addEventListener('change', () => {
+            if (document.getElementById('reportPreview').innerHTML !== '' && 
+                !document.getElementById('reportPreview').querySelector('.text-muted')) {
+                previewReport();
+            }
+        });
+    });
+    
+    function setDefaultDates() {
+        const today = new Date();
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(today.getMonth() - 1);
+        
+        document.getElementById('endDate').valueAsDate = today;
+        document.getElementById('startDate').valueAsDate = oneMonthAgo;
+    }
+    
+    function previewReport() {
+        const reportType = document.getElementById('reportType').value;
+        const previewContainer = document.getElementById('reportPreview');
+        
+        // In a real application, this would fetch a preview from the API
+        // For demo purposes, we'll create some mockup content
+        
+        let previewContent = '';
+        
+        // Generate different previews based on report type
+        switch (reportType) {
+            case 'security_incident':
+                previewContent = generateSecurityIncidentPreview();
+                break;
+            case 'transaction_history':
+                previewContent = generateTransactionHistoryPreview();
+                break;
+            case 'risk_assessment':
+                previewContent = generateRiskAssessmentPreview();
+                break;
+            case 'honeypot_analysis':
+                previewContent = generateHoneypotAnalysisPreview();
+                break;
+            case 'network_summary':
+                previewContent = generateNetworkSummaryPreview();
+                break;
+            default:
+                previewContent = `<div class="text-center text-muted py-5">
+                    <p>No preview available for the selected report type</p>
+                </div>`;
+        }
+        
+        previewContainer.innerHTML = previewContent;
+    }
+    
+    function generateSecurityIncidentPreview() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        return `
+            <div class="mb-4">
+                <h4 class="text-center">Security Incident Analysis</h4>
+                <p class="text-center text-muted">Period: ${startDate} to ${endDate}</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Executive Summary</h5>
+                <p>During this period, your wallet experienced 3 security incidents, with 1 critical and 2 medium severity events. 
+                This report analyzes these incidents and provides recommendations to prevent similar issues in the future.</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Incident Breakdown</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Severity</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>2025-05-03</td>
+                                <td>Honeypot Token</td>
+                                <td><span class="badge bg-danger">Critical</span></td>
+                                <td>Resolved</td>
+                            </tr>
+                            <tr>
+                                <td>2025-04-28</td>
+                                <td>Suspicious Address</td>
+                                <td><span class="badge bg-warning">Medium</span></td>
+                                <td>Resolved</td>
+                            </tr>
+                            <tr>
+                                <td>2025-04-15</td>
+                                <td>Flash Launch</td>
+                                <td><span class="badge bg-warning">Medium</span></td>
+                                <td>Resolved</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Key Findings</h5>
+                <ul>
+                    <li>The critical incident involved a honeypot token that was automatically blocked</li>
+                    <li>Two medium severity incidents were detected and addressed promptly</li>
+                    <li>All incidents were successfully resolved without financial loss</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h5>Recommendations</h5>
+                <ul>
+                    <li>Enable automatic blocking for new tokens with high risk scores</li>
+                    <li>Monitor wallet interactions with suspicious addresses more closely</li>
+                    <li>Consider enabling SMS notifications for faster response</li>
+                </ul>
+            </div>
+            
+            <div class="text-center text-muted mt-4">
+                <p>- Preview Only -</p>
+                <p>Full report will include detailed analysis and complete data tables</p>
+            </div>
+        `;
+    }
+    
+    function generateTransactionHistoryPreview() {
+        return `
+            <div class="mb-4">
+                <h4 class="text-center">Transaction History Report</h4>
+                <p class="text-center text-muted">Comprehensive analysis of wallet transactions</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Transaction Summary</h5>
+                <p>This report covers 73 transactions over the selected period, including token swaps, transfers, and DeFi interactions.</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Transaction Types</h5>
+                <div class="progress mb-2" style="height: 25px;">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: 45%;" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100">Swaps (45%)</div>
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 30%;" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100">Transfers (30%)</div>
+                    <div class="progress-bar bg-info" role="progressbar" style="width: 15%;" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100">DeFi (15%)</div>
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: 10%;" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">Other (10%)</div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Recent Transactions</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>2025-05-07</td>
+                                <td>Swap</td>
+                                <td>1.5 SOL</td>
+                                <td>Confirmed</td>
+                            </tr>
+                            <tr>
+                                <td>2025-05-06</td>
+                                <td>Transfer</td>
+                                <td>2.0 SOL</td>
+                                <td>Confirmed</td>
+                            </tr>
+                            <tr>
+                                <td>2025-05-05</td>
+                                <td>DeFi Deposit</td>
+                                <td>5.0 SOL</td>
+                                <td>Confirmed</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="text-center text-muted mt-4">
+                <p>- Preview Only -</p>
+                <p>Full report will include complete transaction history and detailed analytics</p>
+            </div>
+        `;
+    }
+    
+    function generateRiskAssessmentPreview() {
+        return `
+            <div class="mb-4">
+                <h4 class="text-center">Risk Assessment Report</h4>
+                <p class="text-center text-muted">Comprehensive security risk analysis</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Overall Risk Score</h5>
+                <div class="d-flex align-items-center">
+                    <div class="progress flex-grow-1 me-2" style="height: 30px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+                    </div>
+                    <span class="badge bg-success">Low Risk</span>
+                </div>
+                <p class="text-muted mt-2">Your wallet has a low overall risk score of 25%, indicating good security practices.</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Risk Factors</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Factor</th>
+                                <th>Score</th>
+                                <th>Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Honeypot Exposure</td>
+                                <td>15%</td>
+                                <td><span class="badge bg-success">Low</span></td>
+                            </tr>
+                            <tr>
+                                <td>Suspicious Interactions</td>
+                                <td>35%</td>
+                                <td><span class="badge bg-warning">Medium</span></td>
+                            </tr>
+                            <tr>
+                                <td>Transaction Patterns</td>
+                                <td>20%</td>
+                                <td><span class="badge bg-success">Low</span></td>
+                            </tr>
+                            <tr>
+                                <td>DeFi Protocol Risk</td>
+                                <td>30%</td>
+                                <td><span class="badge bg-warning">Medium</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div>
+                <h5>Key Recommendations</h5>
+                <ol>
+                    <li>Reduce interactions with suspicious addresses (current exposure: 35%)</li>
+                    <li>Consider using lower-risk DeFi protocols where possible</li>
+                    <li>Enable automatic blocking for high-risk tokens</li>
+                </ol>
+            </div>
+            
+            <div class="text-center text-muted mt-4">
+                <p>- Preview Only -</p>
+                <p>Full report will include detailed risk analysis and comprehensive recommendations</p>
+            </div>
+        `;
+    }
+    
+    function generateHoneypotAnalysisPreview() {
+        return `
+            <div class="mb-4">
+                <h4 class="text-center">Honeypot Token Analysis</h4>
+                <p class="text-center text-muted">Detailed analysis of potential honeypot tokens</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Honeypot Detection Summary</h5>
+                <p>This report analyzes 15 tokens in your wallet or transaction history, identifying 3 confirmed honeypots and 2 potential honeypots.</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Identified Honeypots</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Token</th>
+                                <th>Risk Score</th>
+                                <th>Status</th>
+                                <th>Detection Method</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>TOKEN1111...</td>
+                                <td>92/100</td>
+                                <td><span class="badge bg-danger">Confirmed</span></td>
+                                <td>Transaction Pattern</td>
+                            </tr>
+                            <tr>
+                                <td>TOKEN2222...</td>
+                                <td>88/100</td>
+                                <td><span class="badge bg-danger">Confirmed</span></td>
+                                <td>Contract Analysis</td>
+                            </tr>
+                            <tr>
+                                <td>TOKEN3333...</td>
+                                <td>85/100</td>
+                                <td><span class="badge bg-danger">Confirmed</span></td>
+                                <td>ML Detection</td>
+                            </tr>
+                            <tr>
+                                <td>TOKEN4444...</td>
+                                <td>75/100</td>
+                                <td><span class="badge bg-warning">Potential</span></td>
+                                <td>Transaction Pattern</td>
+                            </tr>
+                            <tr>
+                                <td>TOKEN5555...</td>
+                                <td>68/100</td>
+                                <td><span class="badge bg-warning">Potential</span></td>
+                                <td>ML Detection</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div>
+                <h5>Honeypot Characteristics</h5>
+                <ul>
+                    <li>Extremely high sell taxes (>50%)</li>
+                    <li>Transfer restrictions encoded in token contracts</li>
+                    <li>Very few holders (often <10)</li>
+                    <li>Short token age (<24 hours)</li>
+                    <li>Suspicious creation patterns linked to known scammers</li>
+                </ul>
+            </div>
+            
+            <div class="text-center text-muted mt-4">
+                <p>- Preview Only -</p>
+                <p>Full report will include detailed token analysis and preventive measures</p>
+            </div>
+        `;
+    }
+    
+    function generateNetworkSummaryPreview() {
+        return `
+            <div class="mb-4">
+                <h4 class="text-center">Network Relationship Summary</h4>
+                <p class="text-center text-muted">Analysis of wallet connections and transaction patterns</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Network Overview</h5>
+                <p>This report analyzes the network of addresses connected to your wallet, identifying relationship patterns and potential risks.</p>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Connected Addresses</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Address Type</th>
+                                <th>Count</th>
+                                <th>Risk Level</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Trusted</td>
+                                <td>12</td>
+                                <td><span class="badge bg-success">Low</span></td>
+                            </tr>
+                            <tr>
+                                <td>Unknown</td>
+                                <td>23</td>
+                                <td><span class="badge bg-warning">Medium</span></td>
+                            </tr>
+                            <tr>
+                                <td>Suspicious</td>
+                                <td>5</td>
+                                <td><span class="badge bg-danger">High</span></td>
+                            </tr>
+                            <tr>
+                                <td>Known Scam</td>
+                                <td>2</td>
+                                <td><span class="badge bg-danger">Critical</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Key Observations</h5>
+                <ul>
+                    <li>5.2% of your network connections involve suspicious addresses</li>
+                    <li>Two addresses in your network are linked to known scam operations</li>
+                    <li>Your degree of separation from high-risk clusters is relatively low (2 hops)</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h5>Recommendations</h5>
+                <ol>
+                    <li>Block transactions with the two identified scam addresses</li>
+                    <li>Monitor the five suspicious addresses closely</li>
+                    <li>Increase the network distance from high-risk clusters</li>
+                </ol>
+            </div>
+            
+            <div class="text-center text-muted mt-4">
+                <p>- Preview Only -</p>
+                <p>Full report will include detailed network graph and relationship analysis</p>
+            </div>
+        `;
+    }
+    
+    function downloadReport() {
+        const reportType = document.getElementById('reportType').value;
+        const exportFormat = document.getElementById('exportFormat').value;
+        
+        // In a real application, this would trigger a download of the actual report
+        // For demo purposes, we'll just show an alert message
+        
+        const formatNames = {
+            'pdf': 'PDF Document',
+            'csv': 'CSV Spreadsheet',
+            'json': 'JSON Data',
+            'html': 'HTML Report'
+        };
+        
+        const reportNames = {
+            'security_incident': 'Security Incident Analysis',
+            'transaction_history': 'Transaction History',
+            'risk_assessment': 'Risk Assessment',
+            'honeypot_analysis': 'Honeypot Token Analysis',
+            'network_summary': 'Network Relationship Summary'
+        };
+        
+        alert(`Generating ${reportNames[reportType]} report in ${formatNames[exportFormat]} format. This is a simulated action in this demo version.`);
+        
+        // In a real application, this would add the new report to the saved reports list
+        // For demo purposes, we won't modify the table
+    }
+    
+    function generateNewReport() {
+        // Reset the report form and show it
+        document.getElementById('reportConfigForm').reset();
+        setDefaultDates();
+        
+        // Clear the preview
+        document.getElementById('reportPreview').innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i data-feather="file-text" style="width: 48px; height: 48px;"></i>
+                <p class="mt-3">Click "Preview Report" to see a sample of your report here</p>
+            </div>
+        `;
+        
+        // Re-initialize feather icons
+        feather.replace();
+        
+        // Scroll to the report configuration section
+        document.querySelector('.card-header h6').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function clearAllReports() {
+        if (confirm('Are you sure you want to delete all saved reports? This cannot be undone.')) {
+            // In a real application, this would clear all saved reports
+            // For demo purposes, we'll just show a confirmation message
+            
+            alert('All saved reports have been deleted. This is a simulated action in this demo version.');
+            
+            // In a real application, we would update the UI to show no reports
+            // For demo purposes, we'll keep the existing table
+        }
+    }
+    
+    function viewReport(e) {
+        // In a real application, this would open the report for viewing
+        // For demo purposes, we'll just show an alert message
+        
+        const row = e.target.closest('tr');
+        const reportType = row.cells[1].textContent;
+        
+        alert(`Viewing ${reportType} report. This is a simulated action in this demo version.`);
+    }
+    
+    function downloadSavedReport(e) {
+        // In a real application, this would download the saved report
+        // For demo purposes, we'll just show an alert message
+        
+        const row = e.target.closest('tr');
+        const reportType = row.cells[1].textContent;
+        const format = row.cells[4].textContent.trim();
+        
+        alert(`Downloading ${reportType} report in ${format} format. This is a simulated action in this demo version.`);
+    }
+    
+    function deleteReport(e) {
+        // In a real application, this would delete the saved report
+        // For demo purposes, we'll just show an alert message
+        
+        if (confirm('Are you sure you want to delete this report? This cannot be undone.')) {
+            const row = e.target.closest('tr');
+            const reportType = row.cells[1].textContent;
+            
+            alert(`Deleted ${reportType} report. This is a simulated action in this demo version.`);
+            
+            // In a real application, we would remove the row from the table
+            // For demo purposes, we'll keep it
+        }
+    }
+    
+    function initSecurityComparisonChart() {
+        const ctx = document.getElementById('securityComparisonChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Overall Security', 'Incident Rate', 'Response Time', 'Honeypot Exposure', 'Suspicious Interactions'],
+                datasets: [
+                    {
+                        label: 'Your Wallet',
+                        data: [85, 92, 88, 95, 70],
+                        backgroundColor: 'rgba(52, 152, 219, 0.7)'
+                    },
+                    {
+                        label: 'Similar Wallets (Average)',
+                        data: [72, 80, 65, 78, 82],
+                        backgroundColor: 'rgba(149, 165, 166, 0.5)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Score (higher is better)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,753 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Machine Learning Insights{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="cpu"></i>
+                    Machine Learning Insights
+                </h5>
+                <div>
+                    <button id="refreshMlBtn" class="btn btn-sm btn-light">
+                        <i data-feather="refresh-cw"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i data-feather="info"></i>
+                    This dashboard uses machine learning to analyze transaction patterns, predict potential threats, and provide advanced insights into blockchain activities.
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Wallet Risk Assessment</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="mb-4">
+                                    <div id="walletRiskGauge" style="height: 250px;"></div>
+                                </div>
+                                <h5 id="riskAssessmentLabel">Low Risk</h5>
+                                <p class="text-muted">ML-generated risk score based on transaction history and network relations</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Anomaly Detection Timeline</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="anomalyChartContainer" style="height: 250px;"></div>
+                                <div class="d-flex justify-content-center mt-3">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary btn-sm timeframe-btn active" data-range="7">7 Days</button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm timeframe-btn" data-range="30">30 Days</button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm timeframe-btn" data-range="90">90 Days</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Honeypot Token Predictions</h6>
+                                <div>
+                                    <span class="badge bg-warning">ML Model Confidence: 87%</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Token</th>
+                                                <th>Prediction</th>
+                                                <th>Confidence</th>
+                                                <th>Risk</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="honeypotPredictionTable">
+                                            <!-- Predictions will be loaded dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="noPredictionsMessage" class="text-center py-3 d-none">
+                                    <p class="text-muted">No token predictions available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Transaction Pattern Analysis</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="patternChart" height="220"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-12 mb-4">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Address Clustering Results</h6>
+                                <div>
+                                    <button id="exportClusterBtn" class="btn btn-sm btn-outline-secondary">
+                                        <i data-feather="download"></i> Export
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="clusteringGraph" style="height: 400px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Model Performance Metrics</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-6 mb-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h5 class="mb-0">94%</h5>
+                                                        <small class="text-muted">Accuracy</small>
+                                                    </div>
+                                                    <i data-feather="target" class="text-primary"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-6 mb-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h5 class="mb-0">92%</h5>
+                                                        <small class="text-muted">Precision</small>
+                                                    </div>
+                                                    <i data-feather="check-circle" class="text-success"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-6 mb-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h5 class="mb-0">89%</h5>
+                                                        <small class="text-muted">Recall</small>
+                                                    </div>
+                                                    <i data-feather="flag" class="text-warning"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-6 mb-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h5 class="mb-0">90%</h5>
+                                                        <small class="text-muted">F1 Score</small>
+                                                    </div>
+                                                    <i data-feather="bar-chart-2" class="text-info"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <h6>False Positive Rate</h6>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 8%" aria-valuenow="8" aria-valuemin="0" aria-valuemax="100">8%</div>
+                                    </div>
+                                    
+                                    <h6>False Negative Rate</h6>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 11%" aria-valuenow="11" aria-valuemin="0" aria-valuemax="100">11%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">Feature Importance</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="featureImportanceChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<!-- Include Sigma.js for clustering graph -->
+<script src="https://cdn.jsdelivr.net/npm/sigma@2.4.0/build/sigma.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology@0.25.1/dist/graphology.umd.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize feather icons
+        feather.replace();
+        
+        // Load all the visualizations
+        loadWalletRiskGauge();
+        loadAnomalyTimeline();
+        loadHoneypotPredictions();
+        loadTransactionPatternChart();
+        loadClusteringGraph();
+        loadFeatureImportanceChart();
+        
+        // Refresh button handler
+        document.getElementById('refreshMlBtn').addEventListener('click', () => {
+            loadWalletRiskGauge();
+            loadAnomalyTimeline();
+            loadHoneypotPredictions();
+            loadTransactionPatternChart();
+            loadClusteringGraph();
+            loadFeatureImportanceChart();
+        });
+        
+        // Timeframe button handlers
+        document.querySelectorAll('.timeframe-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update active state
+                document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Update the anomaly timeline with the selected range
+                const range = parseInt(e.target.getAttribute('data-range'));
+                loadAnomalyTimeline(range);
+            });
+        });
+        
+        // Export button handler
+        document.getElementById('exportClusterBtn').addEventListener('click', () => {
+            alert('Cluster data would be exported in a real implementation. This is a simulated action in this demo version.');
+        });
+    });
+    
+    function loadWalletRiskGauge() {
+        const gaugeElement = document.getElementById('walletRiskGauge');
+        
+        // For demonstration purposes, create a simple gauge with SVG
+        const riskValue = Math.floor(Math.random() * 40) + 10; // Random value between 10-50 for demo
+        const riskLevel = riskValue < 30 ? 'Low Risk' : (riskValue < 70 ? 'Medium Risk' : 'High Risk');
+        const riskColor = riskValue < 30 ? '#28a745' : (riskValue < 70 ? '#ffc107' : '#dc3545');
+        
+        // Update the risk label
+        document.getElementById('riskAssessmentLabel').textContent = riskLevel;
+        document.getElementById('riskAssessmentLabel').style.color = riskColor;
+        
+        // Create the gauge visualization
+        gaugeElement.innerHTML = `
+            <svg viewBox="0 0 200 100" width="100%" height="100%">
+                <!-- Background arc -->
+                <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="#e9ecef" stroke-width="16" />
+                
+                <!-- Risk arc (dynamically set based on risk value) -->
+                <path d="M20,100 A80,80 0 0,1 ${20 + (160 * riskValue / 100)},${100 - Math.sin(Math.PI * riskValue / 100) * 80}" 
+                      fill="none" stroke="${riskColor}" stroke-width="16" />
+                
+                <!-- Gauge needle -->
+                <line x1="100" y1="100" x2="${100 + Math.cos(Math.PI * (1 - riskValue / 100)) * 60}" 
+                      y2="${100 - Math.sin(Math.PI * (1 - riskValue / 100)) * 60}" 
+                      stroke="#495057" stroke-width="2" />
+                
+                <!-- Gauge center point -->
+                <circle cx="100" cy="100" r="6" fill="#495057" />
+                
+                <!-- Risk value text -->
+                <text x="100" y="140" text-anchor="middle" font-size="24" font-weight="bold">${riskValue}%</text>
+                
+                <!-- Risk level markers -->
+                <text x="40" y="85" text-anchor="middle" font-size="12" fill="#28a745">Low</text>
+                <text x="100" y="70" text-anchor="middle" font-size="12" fill="#ffc107">Medium</text>
+                <text x="160" y="85" text-anchor="middle" font-size="12" fill="#dc3545">High</text>
+            </svg>
+        `;
+    }
+    
+    function loadAnomalyTimeline(days = 7) {
+        const container = document.getElementById('anomalyChartContainer');
+        
+        // Generate random data for the demo
+        const dataPoints = [];
+        const labels = [];
+        const thresholdLine = [];
+        
+        // Set the anomaly threshold
+        const threshold = 0.7;
+        
+        // Create dates for the selected range
+        const now = new Date();
+        for (let i = days - 1; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(now.getDate() - i);
+            labels.push(date.toLocaleDateString());
+            
+            // Generate a random anomaly score (mostly below threshold, occasionally above)
+            let score;
+            if (Math.random() < 0.8) {
+                // 80% chance of normal activity
+                score = Math.random() * 0.5 + 0.1; // 0.1 to 0.6
+            } else {
+                // 20% chance of anomalous activity
+                score = Math.random() * 0.3 + 0.7; // 0.7 to 1.0
+            }
+            
+            dataPoints.push(score);
+            thresholdLine.push(threshold);
+        }
+        
+        // Create chart using Chart.js
+        if (window.anomalyChart) {
+            window.anomalyChart.destroy();
+        }
+        
+        const ctx = document.createElement('canvas');
+        ctx.height = 250;
+        container.innerHTML = '';
+        container.appendChild(ctx);
+        
+        window.anomalyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Anomaly Score',
+                        data: dataPoints,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: (context) => {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value >= threshold ? '#dc3545' : '#3498db';
+                        },
+                        pointBorderColor: (context) => {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value >= threshold ? '#dc3545' : '#3498db';
+                        },
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Threshold',
+                        data: thresholdLine,
+                        borderColor: '#dc3545',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1,
+                        title: {
+                            display: true,
+                            text: 'Anomaly Score'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y;
+                                const isAnomaly = value >= threshold;
+                                return `Score: ${value.toFixed(2)}${isAnomaly ? ' (ANOMALY DETECTED)' : ''}`;
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+    
+    function loadHoneypotPredictions() {
+        // In a real application, this would fetch data from the API
+        // For demo purposes, we'll create some mockup data
+        
+        const predictions = [
+            {
+                token: 'TOKEN1111111111111111111111111111111',
+                prediction: 'Likely Honeypot',
+                confidence: 0.92,
+                riskScore: 87
+            },
+            {
+                token: 'TOKEN2222222222222222222222222222222',
+                prediction: 'Potential Honeypot',
+                confidence: 0.78,
+                riskScore: 72
+            },
+            {
+                token: 'TOKEN3333333333333333333333333333333',
+                prediction: 'Low Risk',
+                confidence: 0.85,
+                riskScore: 23
+            },
+            {
+                token: 'TOKEN4444444444444444444444444444444',
+                prediction: 'Potential Honeypot',
+                confidence: 0.67,
+                riskScore: 64
+            },
+            {
+                token: 'TOKEN5555555555555555555555555555555',
+                prediction: 'Low Risk',
+                confidence: 0.91,
+                riskScore: 15
+            }
+        ];
+        
+        const tableBody = document.getElementById('honeypotPredictionTable');
+        const noDataMessage = document.getElementById('noPredictionsMessage');
+        
+        if (predictions.length === 0) {
+            tableBody.innerHTML = '';
+            noDataMessage.classList.remove('d-none');
+            return;
+        }
+        
+        noDataMessage.classList.add('d-none');
+        let html = '';
+        
+        predictions.forEach(prediction => {
+            const isProbablyHoneypot = prediction.prediction.includes('Honeypot');
+            const badgeClass = isProbablyHoneypot ? 
+                (prediction.confidence > 0.8 ? 'bg-danger' : 'bg-warning') : 
+                'bg-success';
+            
+            const shortToken = `${prediction.token.substring(0, 6)}...${prediction.token.substring(prediction.token.length - 4)}`;
+            
+            html += `
+                <tr>
+                    <td>${shortToken}</td>
+                    <td>
+                        <span class="badge ${badgeClass}">${prediction.prediction}</span>
+                    </td>
+                    <td>${(prediction.confidence * 100).toFixed(0)}%</td>
+                    <td>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${isProbablyHoneypot ? 'bg-danger' : 'bg-success'}" 
+                                 role="progressbar" 
+                                 style="width: ${prediction.riskScore}%" 
+                                 aria-valuenow="${prediction.riskScore}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100"></div>
+                        </div>
+                        <small>${prediction.riskScore}/100</small>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary">Details</button>
+                        ${isProbablyHoneypot ? 
+                          '<button class="btn btn-sm btn-outline-danger ms-1">Block</button>' : 
+                          '<button class="btn btn-sm btn-outline-success ms-1">Whitelist</button>'}
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tableBody.innerHTML = html;
+        
+        // Add event listeners for the buttons
+        tableBody.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                alert('This action would be implemented in a real application. This is a simulated feature in this demo version.');
+            });
+        });
+    }
+    
+    function loadTransactionPatternChart() {
+        // In a real application, this would fetch real transaction pattern data
+        // For demo purposes, we'll create a radar chart with mock data
+        
+        const ctx = document.getElementById('patternChart').getContext('2d');
+        
+        if (window.patternChart) {
+            window.patternChart.destroy();
+        }
+        
+        window.patternChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: [
+                    'Token Swaps',
+                    'NFT Transactions',
+                    'Regular Transfers',
+                    'DeFi Interactions',
+                    'Cross-Chain Bridges',
+                    'Staking Operations'
+                ],
+                datasets: [
+                    {
+                        label: 'Your Wallet',
+                        data: [65, 59, 90, 81, 40, 55],
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgb(54, 162, 235)',
+                        pointBackgroundColor: 'rgb(54, 162, 235)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(54, 162, 235)'
+                    },
+                    {
+                        label: 'Typical Safe Wallet',
+                        data: [70, 60, 80, 70, 30, 60],
+                        backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                        borderColor: 'rgb(40, 167, 69)',
+                        pointBackgroundColor: 'rgb(40, 167, 69)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(40, 167, 69)',
+                        borderDash: [5, 5]
+                    },
+                    {
+                        label: 'High-Risk Pattern',
+                        data: [30, 20, 40, 95, 90, 20],
+                        backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                        borderColor: 'rgb(220, 53, 69)',
+                        pointBackgroundColor: 'rgb(220, 53, 69)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(220, 53, 69)',
+                        borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: {
+                elements: {
+                    line: {
+                        tension: 0.1
+                    }
+                },
+                scales: {
+                    r: {
+                        angleLines: {
+                            display: true
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
+                }
+            }
+        });
+    }
+    
+    function loadClusteringGraph() {
+        const container = document.getElementById('clusteringGraph');
+        
+        // Create a mock graph structure
+        const graph = new graphology.Graph();
+        
+        // Create nodes for each cluster
+        const clusters = {
+            'safe': { color: '#28a745', size: 15, count: 20 },
+            'unknown': { color: '#ffc107', size: 12, count: 15 },
+            'suspicious': { color: '#dc3545', size: 10, count: 10 },
+            'honeypot': { color: '#6f42c1', size: 8, count: 5 }
+        };
+        
+        // Add cluster center nodes
+        Object.keys(clusters).forEach(clusterId => {
+            graph.addNode(clusterId, {
+                x: Math.random(),
+                y: Math.random(),
+                size: clusters[clusterId].size,
+                color: clusters[clusterId].color,
+                label: clusterId.charAt(0).toUpperCase() + clusterId.slice(1)
+            });
+        });
+        
+        // Add nodes for each cluster
+        Object.keys(clusters).forEach(clusterId => {
+            for (let i = 0; i < clusters[clusterId].count; i++) {
+                const nodeId = `${clusterId}_${i}`;
+                
+                // Position nodes in a cluster around their center
+                const angle = (2 * Math.PI * i) / clusters[clusterId].count;
+                const centerX = graph.getNodeAttribute(clusterId, 'x');
+                const centerY = graph.getNodeAttribute(clusterId, 'y');
+                const distance = 0.1 + (Math.random() * 0.05);
+                
+                graph.addNode(nodeId, {
+                    x: centerX + (Math.cos(angle) * distance),
+                    y: centerY + (Math.sin(angle) * distance),
+                    size: 5,
+                    color: clusters[clusterId].color,
+                    label: nodeId
+                });
+                
+                // Connect to cluster center
+                graph.addEdge(clusterId, nodeId, {
+                    size: 1,
+                    color: clusters[clusterId].color
+                });
+                
+                // Connect some nodes within the same cluster
+                if (i > 0 && Math.random() > 0.7) {
+                    const targetIdx = Math.floor(Math.random() * i);
+                    graph.addEdge(nodeId, `${clusterId}_${targetIdx}`, {
+                        size: 0.5,
+                        color: clusters[clusterId].color
+                    });
+                }
+            }
+        });
+        
+        // Connect some clusters
+        graph.addEdge('suspicious', 'honeypot', {
+            size: 2,
+            color: '#6c757d'
+        });
+        
+        graph.addEdge('unknown', 'suspicious', {
+            size: 1.5,
+            color: '#6c757d'
+        });
+        
+        graph.addEdge('safe', 'unknown', {
+            size: 1,
+            color: '#6c757d'
+        });
+        
+        // Create the renderer
+        new Sigma(graph, container, {
+            renderEdgeLabels: false,
+            labelRenderedSizeThreshold: 8,
+            labelSize: 12,
+            nodeSize: 'size',
+            edgeSize: 'size'
+        });
+        
+        // Apply a basic layout
+        const layout = graphology.layout.forceAtlas2;
+        layout.assign(graph, { iterations: 100, settings: { gravity: 1 } });
+    }
+    
+    function loadFeatureImportanceChart() {
+        const ctx = document.getElementById('featureImportanceChart').getContext('2d');
+        
+        if (window.featureImportanceChart) {
+            window.featureImportanceChart.destroy();
+        }
+        
+        window.featureImportanceChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    'Token Age',
+                    'Holder Count',
+                    'Creator Reputation',
+                    'Transaction Velocity',
+                    'Metadata Quality',
+                    'Network Centrality',
+                    'Price Volatility',
+                    'Social Media Mentions'
+                ],
+                datasets: [{
+                    label: 'Feature Importance',
+                    data: [0.23, 0.19, 0.17, 0.12, 0.11, 0.09, 0.06, 0.03],
+                    backgroundColor: [
+                        'rgba(220, 53, 69, 0.7)',
+                        'rgba(220, 53, 69, 0.6)',
+                        'rgba(220, 53, 69, 0.5)',
+                        'rgba(220, 53, 69, 0.4)',
+                        'rgba(220, 53, 69, 0.3)',
+                        'rgba(220, 53, 69, 0.25)',
+                        'rgba(220, 53, 69, 0.2)',
+                        'rgba(220, 53, 69, 0.15)'
+                    ],
+                    borderColor: [
+                        'rgb(220, 53, 69)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 0.3,
+                        title: {
+                            display: true,
+                            text: 'Importance Score'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.x;
+                                return `Importance: ${(value * 100).toFixed(1)}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

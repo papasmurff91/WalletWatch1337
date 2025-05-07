@@ -9,4 +9,5 @@ dependencies = [
     "networkx>=3.4.2",
     "requests>=2.32.3",
     "tweepy>=4.15.0",
+    "twilio>=9.6.0",
 ]
