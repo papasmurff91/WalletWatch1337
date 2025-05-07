@@ -19,7 +19,7 @@ from wallet_monitor import WalletMonitor
 from suspicious_activity import SuspiciousActivityDetector
 from phishing_detector import PhishingDetector
 from twitter_service import TwitterService
-from config import WEB_PORT, WEB_HOST, HONEYPOT_FILE, WHITELIST_FILE, TOKEN_MAP, SUSPICIOUS_ADDRESSES_FILE
+from config import WEB_PORT, WEB_HOST, HONEYPOT_FILE, WHITELIST_FILE, TOKEN_MAP, SUSPICIOUS_ADDRESSES_FILE, SWAP_PROGRAM_IDS
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -470,6 +470,109 @@ def api_check_phishing():
         'is_phishing': is_phishing,
         'confidence': confidence,
         'reason': reason
+    })
+
+# Raydium Swap Webhook Routes
+@app.route('/api/swaps/raydium', methods=['GET'])
+def api_raydium_swaps():
+    """Get recent Raydium swap transactions"""
+    if not monitor:
+        return jsonify({'error': 'Wallet monitor not initialized'}), 400
+    
+    # Get query parameters
+    limit = int(request.args.get('limit', 10))
+    
+    # Filter transactions that involve Raydium program ID
+    raydium_program_id = "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
+    raydium_swaps = []
+    
+    for tx in sorted(monitor.transaction_history, key=lambda x: x.get('block_time', 0), reverse=True):
+        if raydium_program_id in tx.get('program_ids', []):
+            # Extract swap details
+            for event in tx.get('events', []):
+                if event.get('type') == 'swap' and event.get('program_id') == raydium_program_id:
+                    raydium_swaps.append({
+                        'signature': tx.get('signature'),
+                        'timestamp': tx.get('timestamp'),
+                        'swap_details': event,
+                        'honeypot_flags': tx.get('honeypot_flags', []),
+                        'suspicious_flags': tx.get('suspicious_flags', [])
+                    })
+                    break
+    
+    return jsonify(raydium_swaps[:limit])
+
+@app.route('/webhooks/raydium/alerts', methods=['GET'])
+def api_simulate_raydium_webhook():
+    """
+    Simulate a Raydium swap alert webhook for testing purposes
+    This endpoint creates a sample Raydium swap transaction alert
+    """
+    if not monitor:
+        return jsonify({'error': 'Wallet monitor not initialized'}), 400
+    
+    # Create a simulated Raydium swap alert
+    simulated_swap = {
+        'type': 'raydium_honeypot_swap',
+        'timestamp': datetime.utcnow().strftime("%b %d, %Y %H:%M:%S"),
+        'signature': '4kT3KzmCt3tTjzVuef5g6a9SQWMjBQZnuHzaX4dNEh4J88Qnkje7j5vk6ZyiaQk8KFEZSKdJsAwNZ4EyuSg8Qnuk',
+        'wallet': wallet_address,
+        'swap_details': {
+            'type': 'swap',
+            'program_id': '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
+            'dex_name': 'Raydium',
+            'input_token': 'SOL',
+            'input_amount': 1.5,
+            'output_token': 'SCAM TOKEN',
+            'output_amount': 150000,
+            'input_mint': 'So11111111111111111111111111111111111111112',
+            'output_mint': '8SHmGAR4UEmfDuJdyNdGhKXCQguZZmoWVXRTF4xSVFQA',
+            'price_impact': 12.5,
+            'exchange_rate': 100000,
+            'risk_level': 'high',
+            'risk_factors': [
+                'Very high price impact: 12.5%',
+                'Token has very few holders (<10)',
+                'Token created in last 24 hours'
+            ]
+        },
+        'honeypot_tokens': ['8SHmGAR4UEmfDuJdyNdGhKXCQguZZmoWVXRTF4xSVFQA'],
+        'risk_analysis': {
+            'overall_risk': 'critical',
+            'confidence': 0.95,
+            'reasons': [
+                'Token has no liquidity in other pools',
+                'Creator wallet associated with previous rug pulls',
+                'Smart contract prevents selling by non-whitelisted addresses'
+            ]
+        }
+    }
+    
+    return jsonify(simulated_swap)
+
+@app.route('/webhooks/raydium/callback', methods=['POST'])
+def api_raydium_webhook_callback():
+    """
+    Webhook callback endpoint for external services to receive Raydium swap alerts
+    This would be called by the monitor when it detects interesting Raydium swaps
+    """
+    if not request.is_json:
+        return jsonify({'error': 'Invalid JSON'}), 400
+    
+    # Process the incoming webhook data (in a real implementation)
+    # Here we just echo it back for testing
+    webhook_data = request.json
+    
+    # In a real implementation, we would validate the webhook data
+    # and process it accordingly
+    
+    # Log the webhook call
+    print(f"Received Raydium webhook: {json.dumps(webhook_data, indent=2)}")
+    
+    return jsonify({
+        'status': 'success',
+        'message': 'Raydium swap alert received',
+        'received_data': webhook_data
     })
 
 # Twitter Webhook Routes

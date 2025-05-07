@@ -4,6 +4,7 @@ Solana wallet monitor that tracks transactions and detects honeypot tokens
 import json
 import time
 import os
+import re
 from datetime import datetime
 from config import POLL_INTERVAL, TOKEN_MAP, SWAP_PROGRAM_IDS, LOG_FILE, TRANSACTION_HISTORY_FILE
 
@@ -51,6 +52,107 @@ class WalletMonitor:
     def lamports_to_sol(self, lamports):
         """Convert lamports to SOL"""
         return lamports / 1_000_000_000
+        
+    def _get_dex_name(self, program_id):
+        """Get the name of a DEX based on its program ID"""
+        dex_names = {
+            "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB": "Jupiter",
+            "RVKd61ztZW9GdKz6Y8qEJ4zQ2LkWcE6gY6z7mY3bR2U": "Meteora",
+            "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX": "Openbook",
+            "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP": "Orca",
+            "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8": "Raydium"
+        }
+        return dex_names.get(program_id, "Unknown DEX")
+        
+    def _parse_raydium_swap(self, tx, sent_tokens, received_tokens):
+        """
+        Parse a Raydium swap transaction to extract detailed information
+        
+        Returns a dictionary with detailed swap information or None if parsing fails
+        """
+        try:
+            # Extract basic information
+            result = {}
+            
+            # Get transaction logs if available (contains important information about slippage, etc.)
+            logs = tx.get("meta", {}).get("logMessages", [])
+            
+            # Look for specific log patterns in Raydium swaps
+            for log in logs:
+                # Price impact detection
+                if "price impact" in log.lower():
+                    # Parse price impact percentage if available
+                    match = re.search(r"price impact: ([0-9.]+)%", log.lower())
+                    if match:
+                        result["price_impact"] = float(match.group(1))
+                        
+                # Slippage detection
+                if "slippage" in log.lower():
+                    match = re.search(r"slippage: ([0-9.]+)%", log.lower())
+                    if match:
+                        result["slippage"] = float(match.group(1))
+            
+            # Get liquidity pool information if available
+            if sent_tokens and received_tokens:
+                # Calculate approximate exchange rate
+                input_amount = sent_tokens[0].get("amount", 0)
+                output_amount = received_tokens[0].get("amount", 0)
+                
+                if input_amount and output_amount:
+                    result["exchange_rate"] = output_amount / input_amount
+                    
+                    # Calculate USD value if either token is a stablecoin
+                    if sent_tokens[0].get("token_name") in ["USDC", "USDT"]:
+                        result["usd_value"] = input_amount
+                    elif received_tokens[0].get("token_name") in ["USDC", "USDT"]:
+                        result["usd_value"] = output_amount
+            
+            # Analyze inner instructions for pool data
+            inner_instructions = tx.get("meta", {}).get("innerInstructions", [])
+            if inner_instructions:
+                # In Raydium swaps, pool address is often in the inner instructions
+                # This is a simplified approach - a production system would need more robust parsing
+                pool_addresses = []
+                for inner_ix_group in inner_instructions:
+                    for inner_ix in inner_ix_group.get("instructions", []):
+                        if inner_ix.get("programId") == "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8":
+                            for account in inner_ix.get("accounts", []):
+                                if account not in pool_addresses:
+                                    pool_addresses.append(account)
+                
+                if pool_addresses:
+                    result["pool_addresses"] = pool_addresses[:3]  # Limit to first 3 for brevity
+            
+            # Risk analysis
+            risk_level = "low"
+            risk_factors = []
+            
+            # Check for high price impact (>1%)
+            if result.get("price_impact", 0) > 1.0:
+                risk_level = "medium"
+                risk_factors.append(f"High price impact: {result.get('price_impact')}%")
+                
+            # Check for very high price impact (>5%)
+            if result.get("price_impact", 0) > 5.0:
+                risk_level = "high"
+                risk_factors.append(f"Very high price impact: {result.get('price_impact')}%")
+            
+            # Check for suspicious exchange rate (for tokens that should be ~1:1)
+            stablecoins = ["USDC", "USDT"]
+            if (sent_tokens[0].get("token_name") in stablecoins and 
+                received_tokens[0].get("token_name") in stablecoins and
+                abs(1 - result.get("exchange_rate", 1)) > 0.02):
+                risk_level = "high"
+                risk_factors.append(f"Unusual stablecoin exchange rate: {result.get('exchange_rate', 0):.4f}")
+            
+            result["risk_level"] = risk_level
+            result["risk_factors"] = risk_factors
+            
+            return result
+            
+        except Exception as e:
+            self.log_message(f"Error parsing Raydium swap: {e}")
+            return None
         
     def decode_transaction(self, tx):
         """
@@ -191,17 +293,68 @@ class WalletMonitor:
             # Check for swap transactions
             for program_id in transaction_data["program_ids"]:
                 if program_id in SWAP_PROGRAM_IDS:
+                    # Default swap event
                     swap_event = {
                         "type": "swap",
-                        "program_id": program_id
+                        "program_id": program_id,
+                        "dex_name": self._get_dex_name(program_id)
                     }
+                    
+                    # Get input and output tokens based on transfer events
+                    token_transfers = [e for e in transaction_data["events"] if e.get("type") == "token_transfer"]
+                    
+                    # Group by direction
+                    sent_tokens = [t for t in token_transfers if t.get("direction") == "Sent"]
+                    received_tokens = [t for t in token_transfers if t.get("direction") == "Received"]
+                    
+                    # If we have both sent and received tokens, this looks like a swap
+                    if sent_tokens and received_tokens:
+                        # Organize the swap details
+                        swap_event.update({
+                            "input_token": sent_tokens[0].get("token_name", "Unknown"),
+                            "input_amount": sent_tokens[0].get("amount", 0),
+                            "input_mint": sent_tokens[0].get("mint", ""),
+                            "output_token": received_tokens[0].get("token_name", "Unknown"),
+                            "output_amount": received_tokens[0].get("amount", 0),
+                            "output_mint": received_tokens[0].get("mint", "")
+                        })
+                        
+                        # Detailed Raydium swap parsing for better alerts
+                        if program_id == "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8":  # Raydium
+                            raydium_details = self._parse_raydium_swap(tx, sent_tokens, received_tokens)
+                            if raydium_details:
+                                swap_event.update(raydium_details)
+                    
                     transaction_data["events"].append(swap_event)
                     
+                    # Log the swap details
+                    if "input_token" in swap_event and "output_token" in swap_event:
+                        self.log_message(
+                            f"Swap on {swap_event['dex_name']}: {swap_event['input_amount']:.4f} "
+                            f"{swap_event['input_token']} → {swap_event['output_amount']:.4f} "
+                            f"{swap_event['output_token']}"
+                        )
+                    
                     # Check if any honeypot tokens were involved
-                    for event in transaction_data["events"]:
-                        if event.get("type") == "token_transfer" and self.honeypot_detector.is_honeypot(event.get("mint", "")):
-                            self.log_message(f"⚠️ Alert: Honeypot SWAP detected!")
-                            self.notification_service.notify_honeypot_swap(event["mint"], program_id)
+                    honeypot_tokens = []
+                    for event in token_transfers:
+                        mint = event.get("mint", "")
+                        if mint and self.honeypot_detector.is_honeypot(mint):
+                            honeypot_tokens.append(mint)
+                            self.log_message(f"⚠️ Alert: Honeypot token {event['token_name']} involved in SWAP!")
+                            self.notification_service.notify_honeypot_swap(mint, program_id)
+                    
+                    # If this was a Raydium swap with honeypot tokens, prepare webhook data
+                    if program_id == "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8" and honeypot_tokens:
+                        # Store the webhook data in the transaction for API consumption
+                        transaction_data["webhook_data"] = {
+                            "type": "raydium_honeypot_swap",
+                            "signature": transaction_data["signature"],
+                            "timestamp": transaction_data["timestamp"],
+                            "wallet": self.wallet_address,
+                            "swap_details": swap_event,
+                            "honeypot_tokens": honeypot_tokens
+                        }
                     
                     break
             
