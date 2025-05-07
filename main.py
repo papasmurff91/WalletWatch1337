@@ -11,7 +11,7 @@ import hmac
 import hashlib
 import base64
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request, from flask import Flask
+from flask import Flask, render_template, jsonify, request
 app = Flask(__name__)
 
 @app.route('/')

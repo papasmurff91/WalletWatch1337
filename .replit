@@ -5,7 +5,7 @@ channel = "stable-24_05"
 packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "gobject-introspection", "gtk3", "pkg-config", "qhull", "tcl", "tk"]
 
 [workflows]
-runButton = "Project"
+runButton = "Solana Monitor"
 
 [[workflows.workflow]]
 name = "Project"
@@ -24,6 +24,15 @@ author = "agent"
 task = "shell.exec"
 args = "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Solana Monitor"
+author = 42372600
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs"
 
 [deployment]
 run = ["sh", "-c", "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs"]
