@@ -30,6 +30,11 @@
                         <a class="nav-link {% if request.path == '/honeypots' %}active{% endif %}" href="/honeypots">Honeypots</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/suspicious' %}active{% endif %}" href="/suspicious">
+                            <span class="text-danger">Suspicious Activity</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
                     </li>
                 </ul>

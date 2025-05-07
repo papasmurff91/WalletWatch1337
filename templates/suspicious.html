@@ -1,0 +1,607 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Suspicious Activity{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="alert-triangle"></i>
+                    Suspicious Activity Detection
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i data-feather="info"></i>
+                    <strong>Warning:</strong> This page displays addresses and transactions flagged for suspicious activity on the Solana blockchain.
+                    The system monitors for unusual patterns and behaviors that may indicate scams, exploits, or malicious activity.
+                </div>
+                
+                <ul class="nav nav-tabs mb-3" id="suspicious-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="alerts-tab" data-bs-toggle="tab" data-bs-target="#alerts" type="button" role="tab" aria-controls="alerts" aria-selected="true">Recent Alerts</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="unsellable-tab" data-bs-toggle="tab" data-bs-target="#unsellable" type="button" role="tab" aria-controls="unsellable" aria-selected="false">Unsellable Tokens</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="flash-tab" data-bs-toggle="tab" data-bs-target="#flash" type="button" role="tab" aria-controls="flash" aria-selected="false">Flash Launches</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sybil-tab" data-bs-toggle="tab" data-bs-target="#sybil" type="button" role="tab" aria-controls="sybil" aria-selected="false">Sybil Attacks</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="bridges-tab" data-bs-toggle="tab" data-bs-target="#bridges" type="button" role="tab" aria-controls="bridges" aria-selected="false">Bridge Abuse</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="suspicious-tab-content">
+                    <!-- Recent Alerts Tab -->
+                    <div class="tab-pane fade show active" id="alerts" role="tabpanel" aria-labelledby="alerts-tab">
+                        <div id="alertsList">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-danger" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Unsellable Tokens Tab -->
+                    <div class="tab-pane fade" id="unsellable" role="tabpanel" aria-labelledby="unsellable-tab">
+                        <div class="alert alert-info mb-3">
+                            <h5 class="alert-heading"><i data-feather="alert-octagon"></i> Unsellable Token Detection</h5>
+                            <p>This section tracks tokens that appear to have transfer restrictions or cannot be sold on DEXs. Common patterns include:</p>
+                            <ul>
+                                <li>No liquidity on decentralized exchanges</li>
+                                <li>High number of buy orders but failed sell attempts</li>
+                                <li>Transfer blacklists/whitelists in the contract</li>
+                            </ul>
+                        </div>
+                        
+                        <div id="unsellableTokensList">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-danger" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Flash Launches Tab -->
+                    <div class="tab-pane fade" id="flash" role="tabpanel" aria-labelledby="flash-tab">
+                        <div class="alert alert-info mb-3">
+                            <h5 class="alert-heading"><i data-feather="zap"></i> Flash Token Launch Detection</h5>
+                            <p>This section tracks tokens that follow a pump and dump pattern. Signs include:</p>
+                            <ul>
+                                <li>Newly created token with no prior transactions</li>
+                                <li>Quickly paired with liquidity, then pumped</li>
+                                <li>All liquidity removed shortly after volume spikes</li>
+                                <li>Developer wallet offloading large amounts before liquidity removal</li>
+                            </ul>
+                        </div>
+                        
+                        <div id="flashLaunchesList">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-danger" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sybil Attacks Tab -->
+                    <div class="tab-pane fade" id="sybil" role="tabpanel" aria-labelledby="sybil-tab">
+                        <div class="alert alert-info mb-3">
+                            <h5 class="alert-heading"><i data-feather="users"></i> Sybil Attack Pattern Detection</h5>
+                            <p>This section identifies potential Sybil attack patterns where multiple wallets behave similarly:</p>
+                            <ul>
+                                <li>Dozens or hundreds of wallets performing identical actions</li>
+                                <li>Wallets created within minutes of each other</li>
+                                <li>Repeated claims from related wallets</li>
+                                <li>Wallets interacting with only one or two programs</li>
+                            </ul>
+                        </div>
+                        
+                        <div id="sybilGroupsList">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-danger" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bridge Abuse Tab -->
+                    <div class="tab-pane fade" id="bridges" role="tabpanel" aria-labelledby="bridges-tab">
+                        <div class="alert alert-info mb-3">
+                            <h5 class="alert-heading"><i data-feather="git-merge"></i> Bridge Abuse & Cross-Chain Activity</h5>
+                            <p>This section tracks suspicious cross-chain activity that may indicate money laundering:</p>
+                            <ul>
+                                <li>Rapid fund movement from Solana to other chains (Ethereum, BSC)</li>
+                                <li>Complex routing through multiple bridges</li>
+                                <li>Multiple hops to obfuscate the source of funds</li>
+                            </ul>
+                        </div>
+                        
+                        <div id="bridgeAbuseList">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-danger" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Address Details Modal -->
+<div class="modal fade" id="addressModal" tabindex="-1" aria-labelledby="addressModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="addressModalLabel">Suspicious Address Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="addressModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="viewOnSolscan" href="#" target="_blank" class="btn btn-primary">View on Solscan</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Load all data for the tabs
+        loadSuspiciousAlerts();
+        
+        // Set up tab change events
+        document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', event => {
+                const targetId = event.target.getAttribute('data-bs-target').substring(1);
+                switch(targetId) {
+                    case 'alerts':
+                        loadSuspiciousAlerts();
+                        break;
+                    case 'unsellable':
+                        loadUnsellableTokens();
+                        break;
+                    case 'flash':
+                        loadFlashLaunches();
+                        break;
+                    case 'sybil':
+                        loadSybilGroups();
+                        break;
+                    case 'bridges':
+                        loadBridgeAbuse();
+                        break;
+                }
+            });
+        });
+    });
+    
+    // Modal reference
+    let addressModal;
+    
+    function loadSuspiciousAlerts() {
+        const alertsContainer = document.getElementById('alertsList');
+        
+        fetch('/api/suspicious?limit=10')
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    alertsContainer.innerHTML = '<p class="text-center">No suspicious activity detected yet.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Address</th>
+                                    <th>Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.forEach(alert => {
+                    html += `
+                        <tr>
+                            <td>${alert.timestamp}</td>
+                            <td class="text-truncate" style="max-width: 200px;">${alert.address}</td>
+                            <td><span class="text-danger">${alert.reason}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="showAddressDetails('${alert.address}')"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#addressModal">
+                                    Details
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                alertsContainer.innerHTML = html;
+                
+                // Initialize modal
+                addressModal = new bootstrap.Modal(document.getElementById('addressModal'));
+            })
+            .catch(error => {
+                console.error('Error loading alerts:', error);
+                alertsContainer.innerHTML = '<p class="text-center text-danger">Error loading suspicious activity data.</p>';
+            });
+    }
+    
+    function loadUnsellableTokens() {
+        const container = document.getElementById('unsellableTokensList');
+        
+        // This would be a real API endpoint in production
+        // For now, we'll simulate by filtering the suspicious alerts
+        fetch('/api/suspicious?limit=20')
+            .then(response => response.json())
+            .then(data => {
+                // Filter for alerts related to unsellable tokens
+                const tokenAlerts = data.filter(alert => 
+                    alert.reason.toLowerCase().includes('unsellable') || 
+                    alert.reason.toLowerCase().includes('failed sell') || 
+                    alert.reason.toLowerCase().includes('cannot be sold')
+                );
+                
+                if (tokenAlerts.length === 0) {
+                    container.innerHTML = '<p class="text-center">No unsellable tokens detected yet.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Creator</th>
+                                    <th>Detection Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                tokenAlerts.forEach(alert => {
+                    html += `
+                        <tr>
+                            <td class="text-truncate" style="max-width: 200px;">${alert.reason.match(/[a-zA-Z0-9]{8}\.\.\..[a-zA-Z0-9]{8}/) || 'Unknown Token'}</td>
+                            <td class="text-truncate" style="max-width: 150px;">${alert.address}</td>
+                            <td><span class="text-danger">Unsellable Token</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="showAddressDetails('${alert.address}')"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#addressModal">
+                                    Details
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading unsellable tokens:', error);
+                container.innerHTML = '<p class="text-center text-danger">Error loading unsellable token data.</p>';
+            });
+    }
+    
+    function loadFlashLaunches() {
+        const container = document.getElementById('flashLaunchesList');
+        
+        // This would be a real API endpoint in production
+        fetch('/api/suspicious?limit=20')
+            .then(response => response.json())
+            .then(data => {
+                // Filter for alerts related to flash launches
+                const flashAlerts = data.filter(alert => 
+                    alert.reason.toLowerCase().includes('flash') || 
+                    alert.reason.toLowerCase().includes('launch') || 
+                    alert.reason.toLowerCase().includes('liquidity')
+                );
+                
+                if (flashAlerts.length === 0) {
+                    container.innerHTML = '<p class="text-center">No flash launch tokens detected yet.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Creator</th>
+                                    <th>Detection Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                flashAlerts.forEach(alert => {
+                    html += `
+                        <tr>
+                            <td class="text-truncate" style="max-width: 200px;">${alert.reason.match(/[a-zA-Z0-9]{8}\.\.\..[a-zA-Z0-9]{8}/) || 'Unknown Token'}</td>
+                            <td class="text-truncate" style="max-width: 150px;">${alert.address}</td>
+                            <td><span class="text-danger">Flash Launch</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="showAddressDetails('${alert.address}')"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#addressModal">
+                                    Details
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading flash launches:', error);
+                container.innerHTML = '<p class="text-center text-danger">Error loading flash launch data.</p>';
+            });
+    }
+    
+    function loadSybilGroups() {
+        const container = document.getElementById('sybilGroupsList');
+        
+        // This would be a real API endpoint in production
+        fetch('/api/suspicious?limit=20')
+            .then(response => response.json())
+            .then(data => {
+                // Filter for alerts related to Sybil attacks
+                const sybilAlerts = data.filter(alert => 
+                    alert.reason.toLowerCase().includes('sybil') || 
+                    alert.reason.toLowerCase().includes('similar wallet') || 
+                    alert.reason.toLowerCase().includes('group of') || 
+                    alert.reason.toLowerCase().includes('multiple wallet')
+                );
+                
+                if (sybilAlerts.length === 0) {
+                    container.innerHTML = '<p class="text-center">No Sybil attack patterns detected yet.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Group ID</th>
+                                    <th>Address</th>
+                                    <th>Pattern</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                sybilAlerts.forEach((alert, index) => {
+                    html += `
+                        <tr>
+                            <td>Group ${Math.floor(index/3) + 1}</td>
+                            <td class="text-truncate" style="max-width: 150px;">${alert.address}</td>
+                            <td><span class="text-danger">Sybil Pattern</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="showAddressDetails('${alert.address}')"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#addressModal">
+                                    Details
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading Sybil groups:', error);
+                container.innerHTML = '<p class="text-center text-danger">Error loading Sybil attack data.</p>';
+            });
+    }
+    
+    function loadBridgeAbuse() {
+        const container = document.getElementById('bridgeAbuseList');
+        
+        // This would be a real API endpoint in production
+        fetch('/api/suspicious?limit=20')
+            .then(response => response.json())
+            .then(data => {
+                // Filter for alerts related to bridge abuse
+                const bridgeAlerts = data.filter(alert => 
+                    alert.reason.toLowerCase().includes('bridge') || 
+                    alert.reason.toLowerCase().includes('cross-chain') || 
+                    alert.reason.toLowerCase().includes('transfer')
+                );
+                
+                if (bridgeAlerts.length === 0) {
+                    container.innerHTML = '<p class="text-center">No suspicious bridge activity detected yet.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Address</th>
+                                    <th>Time</th>
+                                    <th>Activity</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                bridgeAlerts.forEach(alert => {
+                    html += `
+                        <tr>
+                            <td class="text-truncate" style="max-width: 150px;">${alert.address}</td>
+                            <td>${alert.timestamp}</td>
+                            <td><span class="text-danger">Bridge Abuse</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="showAddressDetails('${alert.address}')"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#addressModal">
+                                    Details
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading bridge abuse data:', error);
+                container.innerHTML = '<p class="text-center text-danger">Error loading bridge abuse data.</p>';
+            });
+    }
+    
+    function showAddressDetails(address) {
+        const modalBody = document.getElementById('addressModalBody');
+        const viewOnSolscan = document.getElementById('viewOnSolscan');
+        
+        // Set the Solscan link
+        viewOnSolscan.href = `https://solscan.io/account/${address}`;
+        
+        // Get address details
+        fetch(`/api/suspicious/addresses`)
+            .then(response => response.json())
+            .then(addresses => {
+                const isSuspicious = addresses.includes(address);
+                
+                if (!isSuspicious) {
+                    modalBody.innerHTML = '<div class="alert alert-warning">This address is no longer flagged as suspicious.</div>';
+                    return;
+                }
+                
+                // Get recent alerts related to this address
+                return fetch('/api/suspicious')
+                    .then(response => response.json())
+                    .then(alerts => {
+                        const addressAlerts = alerts.filter(alert => alert.address === address);
+                        
+                        let html = `
+                            <div class="mb-3">
+                                <h6>Flagged Address</h6>
+                                <p class="text-break">${address}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Detection Reason</h6>
+                                <div class="alert alert-danger">
+                                    ${addressAlerts.length > 0 ? addressAlerts[0].reason : 'Unknown suspicious activity'}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Activity Timeline</h6>
+                                <ul class="list-group">
+                        `;
+                        
+                        if (addressAlerts.length > 0) {
+                            addressAlerts.forEach(alert => {
+                                html += `
+                                    <li class="list-group-item">
+                                        <div class="d-flex justify-content-between">
+                                            <strong class="text-danger">${alert.reason}</strong>
+                                            <small>${alert.timestamp}</small>
+                                        </div>
+                                    </li>
+                                `;
+                            });
+                        } else {
+                            html += `
+                                <li class="list-group-item">No detailed activity available</li>
+                            `;
+                        }
+                        
+                        html += `
+                                </ul>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Recommendations</h6>
+                                <div class="alert alert-warning">
+                                    <ul class="mb-0">
+                                        <li>Do not send funds to this address</li>
+                                        <li>Exercise caution when interacting with tokens associated with this address</li>
+                                        <li>Review any past transactions with this address for potential issues</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        `;
+                        
+                        modalBody.innerHTML = html;
+                    });
+            })
+            .catch(error => {
+                console.error('Error loading address details:', error);
+                modalBody.innerHTML = '<p class="text-center text-danger">Error loading address details.</p>';
+            });
+    }
+</script>
+{% endblock %}

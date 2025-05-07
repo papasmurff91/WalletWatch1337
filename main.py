@@ -43,6 +43,11 @@ def settings():
     """Render the settings page"""
     return render_template('settings.html', wallet_address=wallet_address)
 
+@app.route('/suspicious')
+def suspicious():
+    """Render the suspicious activity page"""
+    return render_template('suspicious.html', wallet_address=wallet_address)
+
 @app.route('/api/transactions')
 def api_transactions():
     """Get transaction history"""
