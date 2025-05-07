@@ -175,6 +175,47 @@
                                 <input type="password" class="form-control" id="twitterBearerToken">
                             </div>
                             
+                            <h5 class="mt-4 mb-3">Twitter Webhook Setup</h5>
+                            <p class="text-muted mb-3">Set up a webhook to receive real-time interactions from Twitter.</p>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Your Webhook URL</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="webhookUrl" readonly 
+                                        value="https://YOURDOMAIN.com/webhooks/twitter/activity">
+                                    <button class="btn btn-outline-secondary" type="button" id="copyWebhookUrl">
+                                        <i data-feather="copy"></i> Copy
+                                    </button>
+                                </div>
+                                <div class="form-text">Use this URL when registering your webhook with Twitter.</div>
+                            </div>
+                            
+                            <div class="card border-info mb-3">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">Twitter Webhook Setup Instructions</h6>
+                                </div>
+                                <div class="card-body">
+                                    <ol class="mb-0">
+                                        <li>Go to the <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">Twitter Developer Portal</a></li>
+                                        <li>Navigate to your Project and App settings</li>
+                                        <li>Go to the "Account Activity API" section</li>
+                                        <li>Add a new webhook using the URL above</li>
+                                        <li>Twitter will send a challenge request to verify your webhook</li>
+                                        <li>Subscribe to user activities for your account</li>
+                                        <li>Test your webhook by mentioning your bot account</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <button type="button" id="registerWebhookBtn" class="btn btn-primary">
+                                    <i data-feather="link"></i> Register Webhook with Twitter
+                                </button>
+                                <button type="button" id="testWebhookBtn" class="btn btn-outline-secondary ms-2">
+                                    <i data-feather="check-circle"></i> Test Connection
+                                </button>
+                            </div>
+                            
                             <hr>
                             
                             <h5 class="mb-3">Other API Keys</h5>
@@ -279,6 +320,84 @@
             twitterFields.forEach(field => {
                 document.getElementById(field).disabled = !isEnabled;
             });
+        });
+        
+        // Copy webhook URL to clipboard
+        document.getElementById('copyWebhookUrl').addEventListener('click', function() {
+            const webhookUrlInput = document.getElementById('webhookUrl');
+            webhookUrlInput.select();
+            document.execCommand('copy');
+            
+            // Show temporary success feedback
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i data-feather="check"></i> Copied!';
+            feather.replace();
+            
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                feather.replace();
+            }, 2000);
+        });
+        
+        // Register webhook with Twitter
+        document.getElementById('registerWebhookBtn').addEventListener('click', function() {
+            // In a real implementation, this would make an API call to Twitter
+            // to register the webhook directly from your app
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Registering...';
+            
+            // For demonstration, we'll just show instructions
+            setTimeout(() => {
+                this.disabled = false;
+                this.innerHTML = '<i data-feather="link"></i> Register Webhook with Twitter';
+                feather.replace();
+                
+                // Show modal with instructions
+                showModal('Twitter Webhook Registration', `
+                    <p>To register your webhook with Twitter, you'll need to:</p>
+                    <ol>
+                        <li>Go to the <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">Twitter Developer Portal</a></li>
+                        <li>Navigate to your Project and App settings</li>
+                        <li>Go to the "Account Activity API" / "Dev environments" section</li>
+                        <li>Create a dev environment if you haven't already</li>
+                        <li>Use the Twitter API to register your webhook URL</li>
+                    </ol>
+                    <p>For example, using Tweepy you can register with:</p>
+                    <pre><code>
+import tweepy
+auth = tweepy.OAuth1UserHandler(consumer_key, consumer_secret, access_token, access_token_secret)
+api = tweepy.API(auth)
+api.register_webhook("https://yourdomain.com/webhooks/twitter/activity", environment_name="your-env-name")
+                    </code></pre>
+                `);
+            }, 1500);
+        });
+        
+        // Test webhook connection
+        document.getElementById('testWebhookBtn').addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Testing...';
+            
+            // Make an AJAX call to test the webhook
+            fetch('/api/webhook/twitter/test')
+                .then(response => response.json())
+                .then(data => {
+                    this.disabled = false;
+                    this.innerHTML = '<i data-feather="check-circle"></i> Test Connection';
+                    feather.replace();
+                    
+                    if (data.success) {
+                        showSuccessMessage('Webhook is properly configured and responding!');
+                    } else {
+                        showErrorMessage('Webhook test failed: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    this.disabled = false;
+                    this.innerHTML = '<i data-feather="check-circle"></i> Test Connection';
+                    feather.replace();
+                    showErrorMessage('Error testing webhook: ' + error.toString());
+                });
         });
         
         // Enable/disable Emergency Response settings

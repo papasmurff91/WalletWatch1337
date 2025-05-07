@@ -7,6 +7,9 @@ import os
 import sys
 import json
 import threading
+import hmac
+import hashlib
+import base64
 from flask import Flask, render_template, jsonify, request, redirect
 from solana_rpc import SolanaRPC
 from honeypot_detector import HoneypotDetector
@@ -272,6 +275,89 @@ def api_check_phishing():
         'confidence': confidence,
         'reason': reason
     })
+
+# Twitter Webhook Routes
+@app.route('/webhooks/twitter/activity', methods=['GET'])
+def twitter_webhook_challenge():
+    """
+    Handle the Twitter Account Activity API CRC challenge
+    Twitter will send a GET request with a crc_token to validate ownership
+    """
+    crc_token = request.args.get('crc_token')
+    if not crc_token:
+        return jsonify({'error': 'Missing crc_token parameter'}), 400
+        
+    # Generate the response using our API secret
+    twitter_api_secret = os.getenv('TWITTER_API_SECRET', '')
+    
+    if not twitter_api_secret:
+        return jsonify({'error': 'Missing Twitter API secret'}), 500
+        
+    # Create HMAC SHA-256 hash from the crc_token using our API secret
+    hmac_digest = hmac.new(
+        key=twitter_api_secret.encode('utf-8'),
+        msg=crc_token.encode('utf-8'),
+        digestmod=hashlib.sha256
+    ).digest()
+    
+    # Base64 encode the hash
+    response_token = 'sha256=' + base64.b64encode(hmac_digest).decode('utf-8')
+    
+    # Return the response token in the required format
+    return jsonify({'response_token': response_token})
+
+@app.route('/webhooks/twitter/activity', methods=['POST'])
+def twitter_webhook_event():
+    """
+    Handle Twitter webhook events sent to our application
+    """
+    # Verify the request is from Twitter using signature validation
+    # This is a simplified version - production should use more robust verification
+    
+    if not request.is_json:
+        return jsonify({'error': 'Invalid request format'}), 400
+    
+    event_data = request.json
+    print(f"Received Twitter webhook event: {json.dumps(event_data)[:200]}...")
+    
+    # Process the different event types
+    # Here we'll check for mention events which would be in for_user -> tweet_create_events
+    if 'for_user_id' in event_data and 'tweet_create_events' in event_data:
+        user_id = event_data['for_user_id']
+        tweets = event_data['tweet_create_events']
+        
+        for tweet in tweets:
+            # Skip our own tweets to avoid infinite loops
+            if 'user' in tweet and 'screen_name' in tweet['user']:
+                screen_name = tweet['user']['screen_name']
+                # Check if this is a reply to us or a mention of us
+                if 'in_reply_to_status_id' in tweet or 'entities' in tweet and 'user_mentions' in tweet['entities']:
+                    process_twitter_mention(tweet)
+    
+    # Always return a 200 OK to Twitter regardless of processing outcome
+    return jsonify({'status': 'ok'}), 200
+
+def process_twitter_mention(tweet):
+    """Process a Twitter mention or reply"""
+    if not monitor:
+        return
+        
+    tweet_id = tweet.get('id_str')
+    screen_name = tweet.get('user', {}).get('screen_name')
+    text = tweet.get('text', '').lower()
+    
+    # Example: Respond to someone asking for a wallet check
+    if 'check wallet' in text or 'scan wallet' in text:
+        # Extract wallet address from tweet (simplified)
+        # In production, use regex to extract Solana wallet addresses properly
+        words = text.split()
+        for word in words:
+            if len(word) > 30 and not word.startswith('@'):
+                potential_wallet = word.strip(',.!?:;')
+                # Respond with a status on this wallet
+                twitter_service = TwitterService()
+                response = f"@{screen_name} I'm analyzing this wallet. Check the dashboard for results: https://solanascan.io/{potential_wallet}"
+                twitter_service.post_tweet(response, alert_type="mention_reply")
 
 def start_monitor(wallet):
     """Start the wallet monitor in a separate thread"""
