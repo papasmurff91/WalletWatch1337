@@ -1,12 +1,13 @@
 """
 Notification service for the Solana wallet monitor
-Handles sending alerts to Discord and Telegram
+Handles sending alerts to Discord, Telegram, and Twitter/X.com
 """
 import requests
 import json
 import time
 from datetime import datetime
 from config import DISCORD_WEBHOOK_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+from twitter_service import TwitterService
 
 class NotificationService:
     """Service for sending notifications to various platforms"""
@@ -14,6 +15,7 @@ class NotificationService:
     def __init__(self):
         self.discord_enabled = bool(DISCORD_WEBHOOK_URL)
         self.telegram_enabled = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
+        self.twitter_service = TwitterService()
         self.last_notification = {}  # Keep track of last notification time per type
         
     def _rate_limit(self, notification_type, seconds=60):
@@ -96,6 +98,9 @@ class NotificationService:
             
         self.send_telegram(telegram_msg)
         
+        # Send to Twitter
+        self.twitter_service.notify_honeypot_detected(mint, reasons, confidence)
+        
     def notify_honeypot_transfer(self, mint, direction, amount, other_address):
         """Send notification when a honeypot token is transferred"""
         if not self._rate_limit(f"transfer_{mint}", 300):  # Once per 5 minutes per token
@@ -167,3 +172,6 @@ class NotificationService:
         telegram_msg += f"*{direction} {'from' if direction == 'Received' else 'to'}:* `{other_address[:8]}...{other_address[-8:]}`"
         
         self.send_telegram(telegram_msg)
+        
+        # Send to Twitter
+        self.twitter_service.notify_large_transfer(token_name, amount, direction, other_address)
