@@ -17,6 +17,7 @@ class HoneypotDetector:
         self.honeypots = self.load_honeypots()
         self.whitelist = self.load_whitelist()
         self.transaction_cache = {}  # mint -> [transaction_timestamps]
+        self.confidence_threshold = 0.75  # Default confidence threshold for honeypot detection
         
     def load_honeypots(self):
         """Load known honeypot tokens from file"""
