@@ -13,12 +13,13 @@ class WalletMonitor:
     honeypot tokens
     """
     
-    def __init__(self, wallet_address, solana_rpc, honeypot_detector, notification_service, suspicious_detector=None):
+    def __init__(self, wallet_address, solana_rpc, honeypot_detector, notification_service, suspicious_detector=None, phishing_detector=None):
         self.wallet_address = wallet_address
         self.solana_rpc = solana_rpc
         self.honeypot_detector = honeypot_detector
         self.notification_service = notification_service
         self.suspicious_detector = suspicious_detector
+        self.phishing_detector = phishing_detector
         self.seen_signatures = set()
         self.transaction_history = self.load_transaction_history()
         
@@ -70,7 +71,9 @@ class WalletMonitor:
                 "events": [],
                 "honeypot_flags": [],
                 "suspicious_flags": [],
-                "program_ids": []
+                "phishing_flags": None,
+                "program_ids": [],
+                "account": self.wallet_address
             }
             
             # Get account keys from the transaction
@@ -211,6 +214,37 @@ class WalletMonitor:
                         "severity": "high"
                     })
                     self.log_message(f"🔍 SUSPICIOUS ACTIVITY DETECTED: {reason}")
+                    
+                    # Send notification via Twitter
+                    if hasattr(self.notification_service, 'twitter_service'):
+                        self.notification_service.twitter_service.notify_suspicious_activity(
+                            self.wallet_address, reason
+                        )
+            
+            # Check for phishing indicators if the detector is available
+            if self.phishing_detector:
+                is_phishing, confidence, reason = self.phishing_detector.analyze_transaction(transaction_data)
+                if is_phishing:
+                    transaction_data["phishing_flags"] = {
+                        "reason": reason,
+                        "confidence": confidence,
+                        "severity": "critical" if confidence > 0.8 else "high"
+                    }
+                    self.log_message(f"🚨 PHISHING ATTEMPT DETECTED: {reason} (Confidence: {confidence:.2f})")
+                    
+                    # Add phishing address to the database
+                    for event in transaction_data["events"]:
+                        if event.get("type") in ["sol_transfer", "token_transfer"]:
+                            # Check if the other address is the potential phishing source
+                            other_address = event.get("other_address")
+                            if other_address and event.get("direction") == "Received":
+                                self.phishing_detector.add_phishing_address(other_address, reason)
+                    
+                    # Send notification via Twitter for critical threats
+                    if confidence > 0.8 and hasattr(self.notification_service, 'twitter_service'):
+                        self.notification_service.twitter_service.notify_suspicious_activity(
+                            self.wallet_address, f"Phishing attempt: {reason}"
+                        )
                     
             # Add to history and save
             self.transaction_history.append(transaction_data)

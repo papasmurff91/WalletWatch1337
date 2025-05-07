@@ -240,6 +240,33 @@ def api_suspicious_addresses():
     
     addresses = list(suspicious_detector.suspicious_addresses)
     return jsonify(addresses)
+    
+@app.route('/api/phishing')
+def api_phishing_alerts():
+    """Get list of phishing alerts"""
+    if not phishing_detector:
+        return jsonify({'error': 'Phishing detector not initialized'}), 400
+    
+    # Get query parameters
+    limit = int(request.args.get('limit', 5))
+    
+    alerts = phishing_detector.get_recent_alerts(limit)
+    return jsonify(alerts)
+    
+@app.route('/api/phishing/check', methods=['POST'])
+def api_check_phishing():
+    """Check if a transaction has phishing indicators"""
+    if not phishing_detector or not request.is_json:
+        return jsonify({'error': 'Invalid request'}), 400
+        
+    tx_data = request.json
+    is_phishing, confidence, reason = phishing_detector.analyze_transaction(tx_data)
+    
+    return jsonify({
+        'is_phishing': is_phishing,
+        'confidence': confidence,
+        'reason': reason
+    })
 
 def start_monitor(wallet):
     """Start the wallet monitor in a separate thread"""
@@ -260,7 +287,8 @@ def start_monitor(wallet):
         solana_rpc, 
         honeypot_detector, 
         notification_service,
-        suspicious_detector
+        suspicious_detector,
+        phishing_detector
     )
     
     # Start monitoring in a separate thread

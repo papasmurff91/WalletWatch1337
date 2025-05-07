@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Phishing Protection{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="shield-off"></i>
+                    Phishing Protection
+                </h5>
+                <div>
+                    <button id="refreshBtn" class="btn btn-sm btn-light">
+                        <i data-feather="refresh-cw"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i data-feather="alert-triangle"></i>
+                    <strong>Important:</strong> Phishing is a common attack vector in cryptocurrency. This page displays potential phishing attempts against your wallet, including fake tokens, malicious URLs, and suspicious fund flows.
+                </div>
+                
+                <!-- Recent Phishing Alerts -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-danger">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="card-title mb-0">
+                                    <i data-feather="alert-octagon"></i>
+                                    Recent Phishing Alerts
+                                </h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div id="phishingAlerts">
+                                    <div class="d-flex justify-content-center py-4">
+                                        <div class="spinner-border text-danger" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Common Phishing Patterns -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i data-feather="trending-up"></i>
+                                    Common Phishing Patterns
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-warning">
+                                            <div class="card-header bg-warning text-dark">
+                                                <h6 class="mb-0">Approval Drainer</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="card-text">Phishing sites ask for token approvals, then drain your entire wallet. Never approve token access without verifying the application.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-warning">
+                                            <div class="card-header bg-warning text-dark">
+                                                <h6 class="mb-0">SOL Drainage</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="card-text">Malicious sites request SOL transaction approvals that drain nearly all your SOL, leaving just enough for transaction fees.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-warning">
+                                            <div class="card-header bg-warning text-dark">
+                                                <h6 class="mb-0">Seed Phrase Stealer</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="card-text">Fake websites that claim to help "restore" or "recover" wallets will ask for your seed phrase. Never share your seed phrase with anyone.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 border-warning">
+                                            <div class="card-header bg-warning text-dark">
+                                                <h6 class="mb-0">False NFT Mint</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="card-text">Fake NFT mints that impersonate popular collections. Always verify collections on reputable marketplaces.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Known Phishing Domains -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i data-feather="globe"></i>
+                                    Known Phishing Domains
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">Below are common domain patterns used in Solana phishing attacks. Always verify URLs before connecting your wallet.</p>
+                                
+                                <ul class="list-group mb-3">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center text-danger">
+                                        solana-claim.xyz
+                                        <span class="badge bg-danger">High Risk</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center text-danger">
+                                        phantom-wallet.app
+                                        <span class="badge bg-danger">High Risk</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center text-danger">
+                                        free-sol.com
+                                        <span class="badge bg-danger">High Risk</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center text-danger">
+                                        solana-drop.net
+                                        <span class="badge bg-danger">High Risk</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center text-danger">
+                                        solscan.cc
+                                        <span class="badge bg-danger">High Risk</span>
+                                    </li>
+                                </ul>
+                                
+                                <div class="alert alert-info">
+                                    <i data-feather="info"></i>
+                                    <strong>Tip:</strong> Always verify domain names carefully. Legitimate domains for Solana include solana.com, phantom.app, solscan.io, and solflare.com.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Set up refresh button
+        document.getElementById('refreshBtn').addEventListener('click', refreshData);
+        
+        // Initial data load
+        loadPhishingAlerts();
+    });
+    
+    function refreshData() {
+        loadPhishingAlerts();
+    }
+    
+    function loadPhishingAlerts() {
+        const alertsContainer = document.getElementById('phishingAlerts');
+        
+        fetch('/api/phishing')
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    alertsContainer.innerHTML = `
+                        <div class="text-center py-4">
+                            <div class="alert alert-success mb-0">
+                                <i data-feather="shield"></i>
+                                No phishing attempts detected. Your wallet appears to be safe.
+                            </div>
+                        </div>
+                    `;
+                    feather.replace();
+                    return;
+                }
+                
+                let html = `<ul class="list-group list-group-flush">`;
+                
+                data.forEach(alert => {
+                    const severityClass = alert.severity === 'critical' ? 'text-danger fw-bold' : 'text-warning';
+                    
+                    html += `
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="${severityClass}">
+                                    <i data-feather="alert-circle"></i>
+                                    ${alert.reason}
+                                </div>
+                                <span class="text-muted small">${alert.timestamp}</span>
+                            </div>
+                            
+                            <div class="mt-2">
+                                <small class="text-muted">Address: ${alert.address}</small>
+                            </div>
+                            
+                            <div class="mt-2">
+                                <span class="badge bg-${alert.severity === 'critical' ? 'danger' : 'warning'}">
+                                    ${alert.severity === 'critical' ? 'Critical' : 'High'} Risk
+                                </span>
+                                
+                                <span class="badge bg-secondary ms-1">
+                                    Confidence: ${Math.round(alert.confidence * 100)}%
+                                </span>
+                            </div>
+                        </li>
+                    `;
+                });
+                
+                html += `</ul>`;
+                alertsContainer.innerHTML = html;
+                feather.replace();
+            })
+            .catch(error => {
+                console.error('Error loading phishing alerts:', error);
+                alertsContainer.innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="alert alert-danger mb-0">
+                            <i data-feather="alert-triangle"></i>
+                            Error loading phishing alerts. Please try again.
+                        </div>
+                    </div>
+                `;
+                feather.replace();
+            });
+    }
+</script>
+{% endblock %}
