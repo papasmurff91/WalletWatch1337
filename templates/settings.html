@@ -4,171 +4,238 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-12">
+    <div class="col-12 mb-4">
         <div class="card">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
                     <i data-feather="settings"></i>
-                    Configuration
+                    Settings
                 </h5>
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
-                    <p>
-                        <strong>Note:</strong> These settings are read-only in the web interface.
-                        To change these values, you need to modify the environment variables or configuration
-                        files and restart the application.
-                    </p>
+                    <i data-feather="info"></i>
+                    Configure your notification settings and API keys here. These settings will be saved to your environment.
                 </div>
                 
-                <div class="mb-4">
-                    <h6>Wallet Information</h6>
-                    <div class="row">
-                        <div class="col-md-6">
+                <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="true">
+                            General
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab" aria-controls="notifications" aria-selected="false">
+                            Notifications
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="api-keys-tab" data-bs-toggle="tab" data-bs-target="#api-keys" type="button" role="tab" aria-controls="api-keys" aria-selected="false">
+                            API Keys
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">
+                            Security
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content p-3" id="settingsTabContent">
+                    <!-- General Settings -->
+                    <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+                        <form id="generalSettingsForm">
                             <div class="mb-3">
-                                <label class="form-label">Monitored Wallet Address</label>
-                                <input type="text" class="form-control" value="{{ wallet_address }}" readonly>
+                                <label for="walletAddress" class="form-label">Wallet Address</label>
+                                <input type="text" class="form-control" id="walletAddress" value="{{ wallet_address }}">
+                                <div class="form-text">The Solana wallet address to monitor for transactions.</div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
+                            
                             <div class="mb-3">
-                                <label class="form-label">Solana Explorer</label>
-                                <a href="https://solscan.io/account/{{ wallet_address }}" target="_blank" class="btn btn-outline-primary d-block">View on Solscan</a>
+                                <label for="refreshInterval" class="form-label">Data Refresh Interval (seconds)</label>
+                                <input type="number" class="form-control" id="refreshInterval" min="10" max="3600" value="30">
+                                <div class="form-text">How often to check for new transactions (10-3600 seconds).</div>
                             </div>
-                        </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enableDarkMode" checked>
+                                <label class="form-check-label" for="enableDarkMode">Enable Dark Mode by Default</label>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save General Settings</button>
+                        </form>
                     </div>
-                </div>
-                
-                <div class="mb-4">
-                    <h6>Monitoring Settings</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">RPC URL</label>
-                                <input type="text" class="form-control" value="https://api.mainnet-beta.solana.com" readonly>
-                                <div class="form-text">Set using SOLANA_RPC_URL environment variable</div>
+                    
+                    <!-- Notification Settings -->
+                    <div class="tab-pane fade" id="notifications" role="tabpanel" aria-labelledby="notifications-tab">
+                        <form id="notificationSettingsForm">
+                            <h5 class="mb-3">Notification Channels</h5>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enableDiscord">
+                                <label class="form-check-label" for="enableDiscord">Enable Discord Notifications</label>
                             </div>
-                        </div>
-                        <div class="col-md-6">
+                            
                             <div class="mb-3">
-                                <label class="form-label">Poll Interval</label>
-                                <input type="text" class="form-control" value="30 seconds" readonly>
-                                <div class="form-text">Set using POLL_INTERVAL environment variable</div>
+                                <label for="discordWebhook" class="form-label">Discord Webhook URL</label>
+                                <input type="text" class="form-control" id="discordWebhook" placeholder="https://discord.com/api/webhooks/...">
+                                <div class="form-text">Your Discord webhook URL for receiving notifications.</div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <h6>Notification Settings</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Discord Webhook</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">Status</span>
-                                    <input type="text" class="form-control" value="Configuration hidden" readonly>
-                                    <span class="input-group-text bg-success text-white">
-                                        <i data-feather="check-circle"></i>
-                                    </span>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enableTelegram">
+                                <label class="form-check-label" for="enableTelegram">Enable Telegram Notifications</label>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="telegramBotToken" class="form-label">Telegram Bot Token</label>
+                                    <input type="text" class="form-control" id="telegramBotToken" placeholder="1234567890:ABCDEF...">
+                                    <div class="form-text">Your Telegram bot token from @BotFather.</div>
                                 </div>
-                                <div class="form-text">Set using DISCORD_WEBHOOK_URL environment variable</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Telegram Integration</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">Status</span>
-                                    <input type="text" class="form-control" value="Configuration hidden" readonly>
-                                    <span class="input-group-text bg-success text-white">
-                                        <i data-feather="check-circle"></i>
-                                    </span>
+                                <div class="col-md-6">
+                                    <label for="telegramChatId" class="form-label">Telegram Chat ID</label>
+                                    <input type="text" class="form-control" id="telegramChatId" placeholder="-1001234567890">
+                                    <div class="form-text">The chat ID to send notifications to.</div>
                                 </div>
-                                <div class="form-text">Set using TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables</div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <h6>Known Tokens</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Mint</th>
-                                    <th>Token Name</th>
-                                    <th>Decimals</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>So11111111111111111111111111111111111111112</td>
-                                    <td>Wrapped SOL</td>
-                                    <td>9</td>
-                                </tr>
-                                <tr>
-                                    <td>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</td>
-                                    <td>USDC</td>
-                                    <td>6</td>
-                                </tr>
-                                <tr>
-                                    <td>Es9vMFrzaCERz1aZHBKz9ZwrZcpt1mMT8ffvAJhY7kF</td>
-                                    <td>USDT</td>
-                                    <td>6</td>
-                                </tr>
-                                <tr>
-                                    <td>7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj</td>
-                                    <td>Bonk</td>
-                                    <td>5</td>
-                                </tr>
-                                <tr>
-                                    <td>mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So</td>
-                                    <td>Marinade SOL</td>
-                                    <td>9</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="form-text">These tokens are pre-configured and won't trigger honeypot detection.</div>
-                </div>
-                
-                <div class="mb-4">
-                    <h6>Interface Settings</h6>
-                    <div class="row">
-                        <div class="col-md-6">
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enableTwitter">
+                                <label class="form-check-label" for="enableTwitter">Enable Twitter/X.com Notifications</label>
+                            </div>
+                            
+                            <hr>
+                            
+                            <h5 class="mb-3">Notification Types</h5>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="notifyHoneypots" checked>
+                                <label class="form-check-label" for="notifyHoneypots">Honeypot Token Alerts</label>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="notifyLargeTransfers" checked>
+                                <label class="form-check-label" for="notifyLargeTransfers">Large Transfer Alerts</label>
+                            </div>
+                            
                             <div class="mb-3">
-                                <label class="form-label">Theme</label>
-                                <div class="btn-group w-100" role="group">
-                                    <button type="button" id="lightModeBtn" class="btn btn-outline-secondary">
-                                        <i data-feather="sun"></i> Light Mode
-                                    </button>
-                                    <button type="button" id="darkModeBtn" class="btn btn-outline-secondary">
-                                        <i data-feather="moon"></i> Dark Mode
-                                    </button>
-                                </div>
-                                <div class="form-text">Choose between light and dark theme for the user interface</div>
+                                <label for="largeTransferThreshold" class="form-label">Large Transfer Threshold (SOL)</label>
+                                <input type="number" class="form-control" id="largeTransferThreshold" min="1" max="100000" value="100">
+                                <div class="form-text">Minimum amount in SOL (or equivalent) to trigger a large transfer alert.</div>
                             </div>
-                        </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="notifySuspiciousActivity" checked>
+                                <label class="form-check-label" for="notifySuspiciousActivity">Suspicious Activity Alerts</label>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="notifyTokenWorthless" checked>
+                                <label class="form-check-label" for="notifyTokenWorthless">Token Value Alerts</label>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save Notification Settings</button>
+                        </form>
                     </div>
-                </div>
-                
-                <div class="mb-4">
-                    <h6>Help & Resources</h6>
-                    <div class="list-group">
-                        <a href="https://github.com/your-repository/solana-wallet-monitor" target="_blank" class="list-group-item list-group-item-action">
-                            <i data-feather="github"></i>
-                            GitHub Repository
-                        </a>
-                        <a href="https://docs.solana.com/" target="_blank" class="list-group-item list-group-item-action">
-                            <i data-feather="book"></i>
-                            Solana Documentation
-                        </a>
-                        <a href="https://discord.gg/solana" target="_blank" class="list-group-item list-group-item-action">
-                            <i data-feather="message-square"></i>
-                            Solana Discord
-                        </a>
+                    
+                    <!-- API Keys Settings -->
+                    <div class="tab-pane fade" id="api-keys" role="tabpanel" aria-labelledby="api-keys-tab">
+                        <form id="apiKeysSettingsForm">
+                            <div class="alert alert-warning">
+                                <i data-feather="shield"></i>
+                                <strong>Security Notice:</strong> API keys are sensitive information. These will be stored securely in your environment variables.
+                            </div>
+                            
+                            <h5 class="mb-3">Twitter/X.com API Keys</h5>
+                            <p class="text-muted mb-3">Required for posting alerts to your Twitter/X.com account.</p>
+                            
+                            <div class="mb-3">
+                                <label for="twitterApiKey" class="form-label">Twitter API Key</label>
+                                <input type="password" class="form-control" id="twitterApiKey">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="twitterApiSecret" class="form-label">Twitter API Secret</label>
+                                <input type="password" class="form-control" id="twitterApiSecret">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="twitterAccessToken" class="form-label">Twitter Access Token</label>
+                                <input type="password" class="form-control" id="twitterAccessToken">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="twitterAccessSecret" class="form-label">Twitter Access Secret</label>
+                                <input type="password" class="form-control" id="twitterAccessSecret">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="twitterBearerToken" class="form-label">Twitter Bearer Token</label>
+                                <input type="password" class="form-control" id="twitterBearerToken">
+                            </div>
+                            
+                            <hr>
+                            
+                            <h5 class="mb-3">Other API Keys</h5>
+                            
+                            <div class="mb-3">
+                                <label for="moralisApiKey" class="form-label">Moralis API Key</label>
+                                <input type="password" class="form-control" id="moralisApiKey">
+                                <div class="form-text">For enhanced token price tracking and analytics.</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save API Keys</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Security Settings -->
+                    <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
+                        <form id="securitySettingsForm">
+                            <h5 class="mb-3">Security Settings</h5>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enableAutoWhitelist">
+                                <label class="form-check-label" for="enableAutoWhitelist">Automatically Whitelist Common Tokens</label>
+                                <div class="form-text">Automatically add known safe tokens (USDC, USDT, etc.) to your whitelist.</div>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enableAdvancedSecurity" checked>
+                                <label class="form-check-label" for="enableAdvancedSecurity">Enable Advanced Security Checks</label>
+                                <div class="form-text">Use advanced heuristics to detect sophisticated honeypot tokens and scams.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="honeypotConfidenceThreshold" class="form-label">Honeypot Detection Threshold</label>
+                                <input type="range" class="form-range" id="honeypotConfidenceThreshold" min="50" max="95" value="75">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">More Sensitive (50%)</span>
+                                    <span class="text-muted" id="confidenceValue">75%</span>
+                                    <span class="text-muted">More Specific (95%)</span>
+                                </div>
+                                <div class="form-text">Lower values may generate more false positives, higher values may miss some honeypots.</div>
+                            </div>
+                            
+                            <h5 class="mt-4 mb-3">Emergency Response</h5>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enableEmergencyResponse">
+                                <label class="form-check-label" for="enableEmergencyResponse">Enable Emergency Response Mode</label>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="emergencyResponseAction" class="form-label">Emergency Action</label>
+                                <select class="form-select" id="emergencyResponseAction" disabled>
+                                    <option value="none">No Action (Monitor Only)</option>
+                                    <option value="alert">Alert Only</option>
+                                    <option value="block">Block Transactions (requires special permissions)</option>
+                                </select>
+                                <div class="form-text">What action to take when a high-confidence honeypot is detected.</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save Security Settings</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -180,32 +247,297 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // Get the current theme
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        // Load saved settings from localStorage
+        loadSettings();
         
-        // Set the active button based on current theme
-        if (currentTheme === 'dark') {
-            document.getElementById('darkModeBtn').classList.add('active');
-            document.getElementById('lightModeBtn').classList.remove('active');
-        } else {
-            document.getElementById('lightModeBtn').classList.add('active');
-            document.getElementById('darkModeBtn').classList.remove('active');
-        }
-        
-        // Add click event listeners to theme buttons
-        document.getElementById('lightModeBtn').addEventListener('click', () => {
-            document.documentElement.setAttribute('data-theme', 'light');
-            localStorage.setItem('theme', 'light');
-            document.getElementById('lightModeBtn').classList.add('active');
-            document.getElementById('darkModeBtn').classList.remove('active');
+        // Set up form submissions
+        document.getElementById('generalSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveGeneralSettings();
         });
         
-        document.getElementById('darkModeBtn').addEventListener('click', () => {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
-            document.getElementById('darkModeBtn').classList.add('active');
-            document.getElementById('lightModeBtn').classList.remove('active');
+        document.getElementById('notificationSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveNotificationSettings();
+        });
+        
+        document.getElementById('apiKeysSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveApiKeys();
+        });
+        
+        document.getElementById('securitySettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveSecuritySettings();
+        });
+        
+        // Enable/disable Twitter API key fields based on checkbox
+        document.getElementById('enableTwitter').addEventListener('change', function() {
+            const twitterFields = ['twitterApiKey', 'twitterApiSecret', 'twitterAccessToken', 'twitterAccessSecret', 'twitterBearerToken'];
+            const isEnabled = this.checked;
+            
+            twitterFields.forEach(field => {
+                document.getElementById(field).disabled = !isEnabled;
+            });
+        });
+        
+        // Enable/disable Emergency Response settings
+        document.getElementById('enableEmergencyResponse').addEventListener('change', function() {
+            document.getElementById('emergencyResponseAction').disabled = !this.checked;
+        });
+        
+        // Update confidence threshold value display
+        document.getElementById('honeypotConfidenceThreshold').addEventListener('input', function() {
+            document.getElementById('confidenceValue').textContent = this.value + '%';
         });
     });
+    
+    function loadSettings() {
+        // Load settings from localStorage if available
+        const settings = JSON.parse(localStorage.getItem('solanaMonitorSettings') || '{}');
+        
+        // General settings
+        if (settings.general) {
+            document.getElementById('refreshInterval').value = settings.general.refreshInterval || 30;
+            document.getElementById('enableDarkMode').checked = settings.general.darkMode !== false;
+        }
+        
+        // Notification settings
+        if (settings.notifications) {
+            document.getElementById('enableDiscord').checked = settings.notifications.discord !== false;
+            document.getElementById('discordWebhook').value = settings.notifications.discordWebhook || '';
+            document.getElementById('enableTelegram').checked = settings.notifications.telegram !== false;
+            document.getElementById('telegramBotToken').value = settings.notifications.telegramBotToken || '';
+            document.getElementById('telegramChatId').value = settings.notifications.telegramChatId || '';
+            document.getElementById('enableTwitter').checked = settings.notifications.twitter !== false;
+            document.getElementById('notifyHoneypots').checked = settings.notifications.honeypots !== false;
+            document.getElementById('notifyLargeTransfers').checked = settings.notifications.largeTransfers !== false;
+            document.getElementById('largeTransferThreshold').value = settings.notifications.largeTransferThreshold || 100;
+            document.getElementById('notifySuspiciousActivity').checked = settings.notifications.suspiciousActivity !== false;
+            document.getElementById('notifyTokenWorthless').checked = settings.notifications.tokenWorthless !== false;
+        }
+        
+        // Security settings
+        if (settings.security) {
+            document.getElementById('enableAutoWhitelist').checked = settings.security.autoWhitelist !== false;
+            document.getElementById('enableAdvancedSecurity').checked = settings.security.advancedSecurity !== false;
+            document.getElementById('honeypotConfidenceThreshold').value = settings.security.confidenceThreshold || 75;
+            document.getElementById('confidenceValue').textContent = (settings.security.confidenceThreshold || 75) + '%';
+            document.getElementById('enableEmergencyResponse').checked = settings.security.emergencyResponse === true;
+            
+            if (settings.security.emergencyResponseAction) {
+                document.getElementById('emergencyResponseAction').value = settings.security.emergencyResponseAction;
+            }
+            
+            document.getElementById('emergencyResponseAction').disabled = !settings.security.emergencyResponse;
+        }
+        
+        // API Keys - don't load for security reasons
+        
+        // Update Twitter API key fields status
+        const twitterEnabled = settings.notifications && settings.notifications.twitter !== false;
+        const twitterFields = ['twitterApiKey', 'twitterApiSecret', 'twitterAccessToken', 'twitterAccessSecret', 'twitterBearerToken'];
+        
+        twitterFields.forEach(field => {
+            document.getElementById(field).disabled = !twitterEnabled;
+        });
+    }
+    
+    function saveGeneralSettings() {
+        // Load existing settings or create new settings object
+        const settings = JSON.parse(localStorage.getItem('solanaMonitorSettings') || '{}');
+        
+        // Update general settings
+        settings.general = {
+            refreshInterval: parseInt(document.getElementById('refreshInterval').value),
+            darkMode: document.getElementById('enableDarkMode').checked
+        };
+        
+        // Save settings
+        localStorage.setItem('solanaMonitorSettings', JSON.stringify(settings));
+        
+        // Show success message
+        showSuccessMessage('General settings saved successfully!');
+    }
+    
+    function saveNotificationSettings() {
+        // Load existing settings or create new settings object
+        const settings = JSON.parse(localStorage.getItem('solanaMonitorSettings') || '{}');
+        
+        // Update notification settings
+        settings.notifications = {
+            discord: document.getElementById('enableDiscord').checked,
+            discordWebhook: document.getElementById('discordWebhook').value,
+            telegram: document.getElementById('enableTelegram').checked,
+            telegramBotToken: document.getElementById('telegramBotToken').value,
+            telegramChatId: document.getElementById('telegramChatId').value,
+            twitter: document.getElementById('enableTwitter').checked,
+            honeypots: document.getElementById('notifyHoneypots').checked,
+            largeTransfers: document.getElementById('notifyLargeTransfers').checked,
+            largeTransferThreshold: parseInt(document.getElementById('largeTransferThreshold').value),
+            suspiciousActivity: document.getElementById('notifySuspiciousActivity').checked,
+            tokenWorthless: document.getElementById('notifyTokenWorthless').checked
+        };
+        
+        // Save settings
+        localStorage.setItem('solanaMonitorSettings', JSON.stringify(settings));
+        
+        // Save API settings to server
+        const apiSettings = {
+            discord_webhook: document.getElementById('discordWebhook').value,
+            telegram_bot_token: document.getElementById('telegramBotToken').value,
+            telegram_chat_id: document.getElementById('telegramChatId').value
+        };
+        
+        fetch('/api/settings/notification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(apiSettings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccessMessage('Notification settings saved successfully!');
+            } else {
+                showErrorMessage('Error saving notification settings to server.');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving notification settings:', error);
+            showErrorMessage('Error connecting to server.');
+        });
+    }
+    
+    function saveApiKeys() {
+        // Save API keys to server
+        const apiKeys = {
+            twitter_api_key: document.getElementById('twitterApiKey').value,
+            twitter_api_secret: document.getElementById('twitterApiSecret').value,
+            twitter_access_token: document.getElementById('twitterAccessToken').value,
+            twitter_access_secret: document.getElementById('twitterAccessSecret').value,
+            twitter_bearer_token: document.getElementById('twitterBearerToken').value,
+            moralis_api_key: document.getElementById('moralisApiKey').value
+        };
+        
+        fetch('/api/settings/api-keys', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(apiKeys)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccessMessage('API keys saved successfully!');
+                
+                // Clear input fields for security
+                document.getElementById('twitterApiKey').value = '';
+                document.getElementById('twitterApiSecret').value = '';
+                document.getElementById('twitterAccessToken').value = '';
+                document.getElementById('twitterAccessSecret').value = '';
+                document.getElementById('twitterBearerToken').value = '';
+                document.getElementById('moralisApiKey').value = '';
+            } else {
+                showErrorMessage('Error saving API keys to server.');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving API keys:', error);
+            showErrorMessage('Error connecting to server.');
+        });
+    }
+    
+    function saveSecuritySettings() {
+        // Load existing settings or create new settings object
+        const settings = JSON.parse(localStorage.getItem('solanaMonitorSettings') || '{}');
+        
+        // Update security settings
+        settings.security = {
+            autoWhitelist: document.getElementById('enableAutoWhitelist').checked,
+            advancedSecurity: document.getElementById('enableAdvancedSecurity').checked,
+            confidenceThreshold: parseInt(document.getElementById('honeypotConfidenceThreshold').value),
+            emergencyResponse: document.getElementById('enableEmergencyResponse').checked,
+            emergencyResponseAction: document.getElementById('emergencyResponseAction').value
+        };
+        
+        // Save settings
+        localStorage.setItem('solanaMonitorSettings', JSON.stringify(settings));
+        
+        // Save security settings to server
+        const securitySettings = {
+            confidence_threshold: parseInt(document.getElementById('honeypotConfidenceThreshold').value),
+            auto_whitelist: document.getElementById('enableAutoWhitelist').checked,
+            advanced_security: document.getElementById('enableAdvancedSecurity').checked
+        };
+        
+        fetch('/api/settings/security', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(securitySettings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccessMessage('Security settings saved successfully!');
+            } else {
+                showErrorMessage('Error saving security settings to server.');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving security settings:', error);
+            showErrorMessage('Error connecting to server.');
+        });
+    }
+    
+    function showSuccessMessage(message) {
+        // Create alert
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alertDiv.setAttribute('role', 'alert');
+        alertDiv.innerHTML = `
+            <i data-feather="check-circle"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        feather.replace();
+        
+        // Auto dismiss after 5 seconds
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 150);
+        }, 5000);
+    }
+    
+    function showErrorMessage(message) {
+        // Create alert
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed bottom-0 end-0 m-3';
+        alertDiv.setAttribute('role', 'alert');
+        alertDiv.innerHTML = `
+            <i data-feather="alert-circle"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        feather.replace();
+        
+        // Auto dismiss after 5 seconds
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 150);
+        }, 5000);
+    }
 </script>
 {% endblock %}

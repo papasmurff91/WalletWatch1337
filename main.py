@@ -13,6 +13,7 @@ from honeypot_detector import HoneypotDetector
 from notification_service import NotificationService
 from wallet_monitor import WalletMonitor
 from suspicious_activity import SuspiciousActivityDetector
+from phishing_detector import PhishingDetector
 from config import WEB_PORT, WEB_HOST, HONEYPOT_FILE, WHITELIST_FILE, TOKEN_MAP, SUSPICIOUS_ADDRESSES_FILE
 
 # Initialize Flask app
@@ -22,6 +23,7 @@ app = Flask(__name__)
 monitor = None
 wallet_address = None
 suspicious_detector = None
+phishing_detector = None
 
 @app.route('/')
 def index():
@@ -140,6 +142,83 @@ def api_token_info(mint):
         'price': price,
         'holders': holders
     })
+    
+@app.route('/api/settings/notification', methods=['POST'])
+def api_save_notification_settings():
+    """Save notification settings"""
+    if not request.is_json:
+        return jsonify({'error': 'Invalid JSON'}), 400
+        
+    data = request.json
+    
+    # Update environment variables
+    if 'discord_webhook' in data:
+        os.environ['DISCORD_WEBHOOK_URL'] = data['discord_webhook']
+        
+    if 'telegram_bot_token' in data:
+        os.environ['TELEGRAM_BOT_TOKEN'] = data['telegram_bot_token']
+        
+    if 'telegram_chat_id' in data:
+        os.environ['TELEGRAM_CHAT_ID'] = data['telegram_chat_id']
+        
+    return jsonify({'success': True})
+    
+@app.route('/api/settings/api-keys', methods=['POST'])
+def api_save_api_keys():
+    """Save API keys settings"""
+    if not request.is_json:
+        return jsonify({'error': 'Invalid JSON'}), 400
+        
+    data = request.json
+    
+    # Update environment variables for Twitter
+    if 'twitter_api_key' in data and data['twitter_api_key']:
+        os.environ['TWITTER_API_KEY'] = data['twitter_api_key']
+        
+    if 'twitter_api_secret' in data and data['twitter_api_secret']:
+        os.environ['TWITTER_API_SECRET'] = data['twitter_api_secret']
+        
+    if 'twitter_access_token' in data and data['twitter_access_token']:
+        os.environ['TWITTER_ACCESS_TOKEN'] = data['twitter_access_token']
+        
+    if 'twitter_access_secret' in data and data['twitter_access_secret']:
+        os.environ['TWITTER_ACCESS_SECRET'] = data['twitter_access_secret']
+        
+    if 'twitter_bearer_token' in data and data['twitter_bearer_token']:
+        os.environ['TWITTER_BEARER_TOKEN'] = data['twitter_bearer_token']
+        
+    # Update other API keys
+    if 'moralis_api_key' in data and data['moralis_api_key']:
+        os.environ['MORALIS_API_KEY'] = data['moralis_api_key']
+        
+    return jsonify({'success': True})
+    
+@app.route('/api/settings/security', methods=['POST'])
+def api_save_security_settings():
+    """Save security settings"""
+    if not request.is_json:
+        return jsonify({'error': 'Invalid JSON'}), 400
+        
+    data = request.json
+    
+    if monitor and monitor.honeypot_detector:
+        # Update honeypot detector settings if available
+        if 'confidence_threshold' in data:
+            monitor.honeypot_detector.confidence_threshold = float(data['confidence_threshold']) / 100.0
+            
+        if 'auto_whitelist' in data and data['auto_whitelist']:
+            # Auto-whitelist common tokens
+            common_tokens = [
+                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",  # USDC
+                "Es9vMFrzaCERz1aZHBKz9ZwrZcpt1mMT8ffvAJhY7kF",   # USDT
+                "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",   # mSOL
+                "So11111111111111111111111111111111111111112"    # wSOL
+            ]
+            
+            for token in common_tokens:
+                monitor.honeypot_detector.add_to_whitelist(token)
+                
+    return jsonify({'success': True})
 
 @app.route('/api/suspicious')
 def api_suspicious_activity():
@@ -164,7 +243,7 @@ def api_suspicious_addresses():
 
 def start_monitor(wallet):
     """Start the wallet monitor in a separate thread"""
-    global monitor, wallet_address, suspicious_detector
+    global monitor, wallet_address, suspicious_detector, phishing_detector
     
     wallet_address = wallet
     
@@ -173,6 +252,7 @@ def start_monitor(wallet):
     honeypot_detector = HoneypotDetector(solana_rpc)
     notification_service = NotificationService()
     suspicious_detector = SuspiciousActivityDetector(solana_rpc)
+    phishing_detector = PhishingDetector(solana_rpc)
     
     # Create and start the monitor
     monitor = WalletMonitor(
