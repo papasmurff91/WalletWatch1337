@@ -700,21 +700,34 @@ def api_jupiter_webhook_callback():
     if not request.is_json:
         return jsonify({'error': 'Invalid JSON'}), 400
     
-    # Process the incoming webhook data (in a real implementation)
-    # Here we just echo it back for testing
+    # Process the incoming webhook data
     webhook_data = request.json
-    
-    # In a real implementation, we would validate the webhook data
-    # and process it accordingly
     
     # Log the webhook call
     print(f"Received Jupiter webhook: {json.dumps(webhook_data, indent=2)}")
     
-    return jsonify({
-        'status': 'success',
-        'message': 'Jupiter swap alert received with account tagging',
-        'received_data': webhook_data
-    })
+    # Check if this is a swap alert with enough information to process
+    if webhook_data.get('type') == 'jupiter_swap_alert' or 'swap_details' in webhook_data:
+        # Send notification via all configured channels
+        notification_service = NotificationService()
+        notification_service.notify_jupiter_swap(webhook_data)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Jupiter swap alert processed and notifications sent',
+            'notification_channels': [
+                'telegram' if notification_service.telegram_enabled else None,
+                'discord' if notification_service.discord_enabled else None,
+                'twitter' if notification_service.twitter_service.is_enabled() else None
+            ]
+        })
+    else:
+        # Just echo back the data if it's not a properly formatted swap alert
+        return jsonify({
+            'status': 'success',
+            'message': 'Jupiter data received but not processed as a swap alert',
+            'received_data': webhook_data
+        })
 
 # Twitter Webhook Routes
 @app.route('/webhooks/twitter/activity', methods=['GET'])

@@ -175,3 +175,87 @@ class NotificationService:
         
         # Send to Twitter
         self.twitter_service.notify_large_transfer(token_name, amount, direction, other_address)
+        
+    def notify_jupiter_swap(self, swap_data):
+        """Send notification for Jupiter swap alerts with account tagging"""
+        # Extract data from the swap alert
+        signature = swap_data.get('signature', 'Unknown')
+        swap_details = swap_data.get('swap_details', {})
+        risk_analysis = swap_data.get('risk_analysis', {})
+        associated_accounts = swap_data.get('associated_accounts', [])
+        
+        # Rate limit based on signature
+        if not self._rate_limit(f"jupiter_swap_{signature}", 300):  # Once per 5 minutes per swap
+            return
+            
+        # Get swap details
+        input_token = swap_details.get('input_token', 'Unknown')
+        input_amount = swap_details.get('input_amount', 0)
+        output_token = swap_details.get('output_token', 'Unknown')
+        output_amount = swap_details.get('output_amount', 0)
+        risk_level = risk_analysis.get('overall_risk', 'Unknown').upper()
+        reasons = risk_analysis.get('reasons', [])
+        
+        # Prepare Discord message
+        title = f"🔄 Jupiter Swap Alert - {risk_level} RISK"
+        message = f"**Swap:** {input_amount} {input_token} → {output_amount} {output_token}\n"
+        message += f"**Risk Level:** {risk_level}\n"
+        
+        if reasons:
+            message += "**Risk Factors:**\n"
+            for reason in reasons:
+                message += f"• {reason}\n"
+                
+        if associated_accounts:
+            message += "\n**Associated Accounts:**\n"
+            for account in associated_accounts:
+                platform = account.get('platform', '')
+                username = account.get('username', '')
+                tag = account.get('tag', 'unknown')
+                if platform and username:
+                    message += f"• {platform} @{username} ({tag})\n"
+                else:
+                    message += f"• {account.get('address', '')} ({tag})\n"
+        
+        message += f"\n**Transaction:** {signature[:8]}...{signature[-8:]}"
+        
+        # Set color based on risk level
+        color = 3447003  # Blue (default/low)
+        if risk_level == "CRITICAL" or risk_level == "HIGH":
+            color = 16711680  # Red
+        elif risk_level == "MEDIUM":
+            color = 16776960  # Yellow
+            
+        self.send_discord(title, message, color=color)
+        
+        # Prepare Telegram message
+        telegram_msg = f"🔄 *Jupiter Swap Alert - {risk_level} RISK*\n\n"
+        telegram_msg += f"*Swap:* {input_amount} {input_token} → {output_amount} {output_token}\n"
+        telegram_msg += f"*Risk Level:* {risk_level}\n"
+        
+        if reasons:
+            telegram_msg += "\n*Risk Factors:*\n"
+            for reason in reasons:
+                telegram_msg += f"• {reason}\n"
+                
+        if associated_accounts:
+            telegram_msg += "\n*Associated Accounts:*\n"
+            for account in associated_accounts:
+                platform = account.get('platform', '')
+                username = account.get('username', '')
+                tag = account.get('tag', 'unknown')
+                if platform and username:
+                    telegram_msg += f"• {platform} @{username} ({tag})\n"
+                else:
+                    telegram_msg += f"• `{account.get('address', '')}` ({tag})\n"
+        
+        telegram_msg += f"\n*Transaction:* `{signature[:8]}...{signature[-8:]}`"
+        
+        self.send_telegram(telegram_msg)
+        
+        # Send to Twitter if it's high risk
+        if risk_level in ["HIGH", "CRITICAL"]:
+            self.twitter_service.notify_suspicious_activity(
+                output_token, 
+                f"High-risk Jupiter swap detected: {input_amount} {input_token} to {output_amount} {output_token}"
+            )

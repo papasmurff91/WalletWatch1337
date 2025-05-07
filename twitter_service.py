@@ -48,6 +48,12 @@ class TwitterService:
         # Log initialization
         self.log_message("Twitter service initialized")
         
+    def is_enabled(self):
+        """Check if Twitter service is properly configured and enabled"""
+        return bool(self.api_key and self.api_secret and 
+                   (self.access_token and self.access_secret) or 
+                   self.bearer_token)
+        
     def _initialize_tweepy(self):
         """Initialize Tweepy clients for both v1 and v2 APIs"""
         try:
