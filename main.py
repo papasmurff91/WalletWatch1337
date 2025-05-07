@@ -59,6 +59,11 @@ def analytics():
 def risk_score():
     """Render the honeypot risk score page"""
     return render_template('risk_score.html', wallet_address=wallet_address)
+    
+@app.route('/phishing')
+def phishing():
+    """Render the phishing protection page"""
+    return render_template('phishing.html', wallet_address=wallet_address)
 
 @app.route('/api/transactions')
 def api_transactions():

@@ -40,6 +40,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/phishing' %}active{% endif %}" href="/phishing">
+                            <i data-feather="shield-off"></i> Phishing Protection
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == '/suspicious' %}active{% endif %}" href="/suspicious">
                             <span class="text-danger">Suspicious Activity</span>
                         </a>
