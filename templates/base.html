@@ -53,7 +53,33 @@
                         <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
                     </li>
                 </ul>
-                <div class="ms-auto">
+                <div class="ms-auto d-flex align-items-center">
+                    <!-- Notification Bell -->
+                    <div class="dropdown me-3 position-relative">
+                        <button class="btn btn-outline-light btn-sm position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i data-feather="bell"></i>
+                            <span id="notificationCounter" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
+                                0
+                                <span class="visually-hidden">unread notifications</span>
+                            </span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                            <li>
+                                <h6 class="dropdown-header">Notifications</h6>
+                            </li>
+                            <div id="notificationsContainer">
+                                <li><div class="dropdown-item text-center">No new notifications</div></li>
+                            </div>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-center" href="/suspicious">
+                                    <small>View All Alerts</small>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Dark Mode Toggle -->
                     <button id="darkModeToggle" class="btn btn-outline-light btn-sm">
                         <i data-feather="moon"></i>
                     </button>
@@ -78,15 +104,141 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/dark-mode.js"></script>
     
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notificationToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage">
+                    New suspicious activity detected!
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Store previously seen notifications to track what's new
+        let previousNotifications = [];
+        let latestNotificationTimestamp = '';
+        let unreadNotificationsCount = 0;
+        
         document.addEventListener('DOMContentLoaded', () => {
             feather.replace();
             loadSuspiciousActivity();
+            loadNotifications();
             
-            // Periodically check for new suspicious activity
+            // Periodically check for new activity
             setInterval(loadSuspiciousActivity, 30000); // Check every 30 seconds
+            setInterval(loadNotifications, 15000); // Check for notifications every 15 seconds
         });
         
+        // Function to load notifications for the bell dropdown
+        function loadNotifications() {
+            fetch('/api/suspicious?limit=10')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        document.getElementById('notificationsContainer').innerHTML = '<li><div class="dropdown-item text-center">No new notifications</div></li>';
+                        return;
+                    }
+                    
+                    // Sort by timestamp (most recent first)
+                    data.sort((a, b) => {
+                        return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+                    });
+                    
+                    // Check for new notifications
+                    if (latestNotificationTimestamp === '') {
+                        // First load - set the latest timestamp
+                        latestNotificationTimestamp = data[0].timestamp || '';
+                    } else if (data[0].timestamp && data[0].timestamp !== latestNotificationTimestamp) {
+                        // New notification - show toast notification for each new alert
+                        const newItems = data.filter(alert => 
+                            !previousNotifications.some(item => 
+                                item.timestamp === alert.timestamp && item.reason === alert.reason
+                            )
+                        );
+                        
+                        if (newItems.length > 0) {
+                            // Show toast for the most critical notification
+                            showToastNotification(newItems[0].reason);
+                            
+                            // Update counter
+                            unreadNotificationsCount += newItems.length;
+                            const counterElement = document.getElementById('notificationCounter');
+                            counterElement.textContent = unreadNotificationsCount;
+                            counterElement.classList.remove('d-none');
+                        }
+                        
+                        // Update latest timestamp
+                        latestNotificationTimestamp = data[0].timestamp || '';
+                    }
+                    
+                    // Store current notifications for future comparison
+                    previousNotifications = [...data];
+                    
+                    // Render notifications in dropdown
+                    let html = '';
+                    data.forEach(alert => {
+                        let severityClass = '';
+                        if (alert.reason.includes('Unsellable token') || alert.reason.includes('rug pull')) {
+                            severityClass = 'text-danger fw-bold';
+                        } else if (alert.reason.includes('Flash launch') || alert.reason.includes('Cross-chain transfer')) {
+                            severityClass = 'text-warning fw-bold';
+                        } else {
+                            severityClass = 'text-info';
+                        }
+                        
+                        html += `
+                            <li>
+                                <a class="dropdown-item" href="/suspicious">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <small class="${severityClass}">${alert.reason}</small>
+                                        <small class="text-muted">${timeAgo(alert.timestamp)}</small>
+                                    </div>
+                                    <small class="text-truncate d-block" style="max-width: 100%;">${alert.address || 'Unknown'}</small>
+                                </a>
+                            </li>
+                        `;
+                    });
+                    
+                    document.getElementById('notificationsContainer').innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                });
+                
+            // Clear notification count when dropdown is opened
+            document.getElementById('notificationDropdown').addEventListener('click', function() {
+                unreadNotificationsCount = 0;
+                document.getElementById('notificationCounter').classList.add('d-none');
+            });
+        }
+        
+        // Function to display a toast notification
+        function showToastNotification(message) {
+            const toastElement = document.getElementById('notificationToast');
+            const toast = new bootstrap.Toast(toastElement);
+            
+            document.getElementById('toastMessage').textContent = message;
+            toast.show();
+        }
+        
+        // Convert timestamp to "time ago" format
+        function timeAgo(timestamp) {
+            if (!timestamp) return 'Unknown';
+            
+            const now = new Date();
+            const date = new Date(timestamp);
+            const secondsAgo = Math.floor((now - date) / 1000);
+            
+            if (secondsAgo < 60) return 'Just now';
+            if (secondsAgo < 3600) return Math.floor(secondsAgo / 60) + 'm ago';
+            if (secondsAgo < 86400) return Math.floor(secondsAgo / 3600) + 'h ago';
+            return Math.floor(secondsAgo / 86400) + 'd ago';
+        }
+        
+        // Function to load suspicious activity for the main dashboard
         function loadSuspiciousActivity() {
             fetch('/api/suspicious')
                 .then(response => response.json())

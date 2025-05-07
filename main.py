@@ -68,6 +68,11 @@ def risk_score():
 def phishing():
     """Render the phishing protection page"""
     return render_template('phishing.html', wallet_address=wallet_address)
+    
+@app.route('/threat-timeline')
+def threat_timeline():
+    """Render the threat timeline visualization page"""
+    return render_template('threat_timeline.html', wallet_address=wallet_address)
 
 @app.route('/api/transactions')
 def api_transactions():
@@ -249,6 +254,77 @@ def api_suspicious_addresses():
     
     addresses = list(suspicious_detector.suspicious_addresses)
     return jsonify(addresses)
+    
+@app.route('/api/threat-timeline')
+def api_threat_timeline():
+    """Get threat timeline data for visualization"""
+    if not suspicious_detector:
+        return jsonify({'error': 'Suspicious activity detector not initialized'}), 400
+    
+    # Get query parameters for filtering
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    severity = request.args.get('severity')
+    threat_type = request.args.get('type')
+    
+    # Get all alerts
+    alerts = suspicious_detector.get_recent_alerts(limit=100)  # Get a large number to work with
+    
+    # Apply filters
+    if start_date:
+        try:
+            start_datetime = datetime.fromisoformat(start_date)
+            alerts = [a for a in alerts if a.get('timestamp') and datetime.fromisoformat(a['timestamp']) >= start_datetime]
+        except ValueError:
+            pass
+            
+    if end_date:
+        try:
+            end_datetime = datetime.fromisoformat(end_date)
+            alerts = [a for a in alerts if a.get('timestamp') and datetime.fromisoformat(a['timestamp']) <= end_datetime]
+        except ValueError:
+            pass
+    
+    # Apply severity filter
+    if severity:
+        if severity == 'critical':
+            alerts = [a for a in alerts if 'Unsellable token' in a.get('reason', '') or 'rug pull' in a.get('reason', '')]
+        elif severity == 'high':
+            alerts = [a for a in alerts if 'Flash launch' in a.get('reason', '') or 'Cross-chain transfer' in a.get('reason', '')]
+        elif severity == 'medium':
+            alerts = [a for a in alerts if not ('Unsellable token' in a.get('reason', '') or 'rug pull' in a.get('reason', '') or 
+                                              'Flash launch' in a.get('reason', '') or 'Cross-chain transfer' in a.get('reason', ''))]
+    
+    # Apply threat type filter
+    if threat_type:
+        alerts = [a for a in alerts if threat_type.lower() in a.get('reason', '').lower()]
+    
+    # Process the alerts for the timeline
+    timeline_data = []
+    
+    for alert in alerts:
+        severity_level = 'medium'
+        if 'Unsellable token' in alert.get('reason', '') or 'rug pull' in alert.get('reason', ''):
+            severity_level = 'critical'
+        elif 'Flash launch' in alert.get('reason', '') or 'Cross-chain transfer' in alert.get('reason', ''):
+            severity_level = 'high'
+            
+        timeline_item = {
+            'id': alert.get('id', str(len(timeline_data))),
+            'timestamp': alert.get('timestamp'),
+            'address': alert.get('address'),
+            'reason': alert.get('reason'),
+            'details': alert.get('details', ''),
+            'severity': severity_level,
+            'related_events': alert.get('related_events', [])
+        }
+        
+        timeline_data.append(timeline_item)
+    
+    # Sort by timestamp
+    timeline_data.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    
+    return jsonify(timeline_data)
     
 @app.route('/api/phishing')
 def api_phishing_alerts():
