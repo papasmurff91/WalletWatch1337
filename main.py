@@ -74,6 +74,11 @@ def phishing():
 def threat_timeline():
     """Render the threat timeline visualization page"""
     return render_template('threat_timeline.html', wallet_address=wallet_address)
+    
+@app.route('/network-graph')
+def network_graph():
+    """Render the network relationship graph visualization page"""
+    return render_template('network_graph.html', wallet_address=wallet_address)
 
 @app.route('/api/transactions')
 def api_transactions():
@@ -294,7 +299,7 @@ def api_threat_timeline():
             alerts = [a for a in alerts if 'Flash launch' in a.get('reason', '') or 'Cross-chain transfer' in a.get('reason', '')]
         elif severity == 'medium':
             alerts = [a for a in alerts if not ('Unsellable token' in a.get('reason', '') or 'rug pull' in a.get('reason', '') or 
-                                              'Flash launch' in a.get('reason', '') or 'Cross-chain transfer' in a.get('reason', ''))]
+                                          'Flash launch' in a.get('reason', '') or 'Cross-chain transfer' in a.get('reason', ''))]
     
     # Apply threat type filter
     if threat_type:
@@ -326,6 +331,100 @@ def api_threat_timeline():
     timeline_data.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
     
     return jsonify(timeline_data)
+
+@app.route('/api/network-graph')
+def api_network_graph():
+    """Get network relationship graph data for visualization"""
+    if not suspicious_detector:
+        return jsonify({'error': 'Suspicious activity detector not initialized'}), 400
+    
+    # Get query parameters for filtering
+    address_filter = request.args.get('address')
+    activity_type = request.args.get('activityType')
+    risk_level = request.args.get('riskLevel')
+    time_frame = request.args.get('timeFrame', '7d')
+    
+    # In a real implementation, this would:
+    # 1. Query transactions involving the wallet and suspicious addresses
+    # 2. Build a graph of related addresses
+    # 3. Apply the filters
+    # 4. Return the graph data
+    
+    # For demonstration purposes, return a simple mock network
+    suspicious_addresses = list(suspicious_detector.suspicious_addresses)[:5]
+    
+    # Create a simple network structure
+    nodes = [
+        {"id": wallet_address, "label": f"{wallet_address[:4]}...{wallet_address[-4:]}", "type": "wallet"}
+    ]
+    
+    edges = []
+    
+    # Add suspicious addresses as nodes
+    for i, address in enumerate(suspicious_addresses):
+        nodes.append({
+            "id": address,
+            "label": f"{address[:4]}...{address[-4:]}",
+            "type": "suspicious"
+        })
+        
+        # Connect to wallet sometimes
+        if i % 2 == 0:
+            edges.append({
+                "source": wallet_address,
+                "target": address,
+                "weight": 1 + i,
+                "type": "transfer"
+            })
+    
+    # Add some random addresses connected to suspicious ones
+    for i in range(10):
+        random_address = f"Addr{i+1:02d}" + "1" * 35
+        nodes.append({
+            "id": random_address,
+            "label": f"{random_address[:4]}...{random_address[-4:]}",
+            "type": "unknown"
+        })
+        
+        # Connect to a suspicious address
+        target_idx = i % len(suspicious_addresses)
+        edges.append({
+            "source": random_address,
+            "target": suspicious_addresses[target_idx],
+            "weight": 1,
+            "type": "transfer"
+        })
+        
+        # Sometimes connect to wallet
+        if i % 3 == 0:
+            edges.append({
+                "source": wallet_address,
+                "target": random_address,
+                "weight": 1,
+                "type": "transfer"
+            })
+    
+    # Add some trusted addresses
+    for i in range(3):
+        trusted_address = f"Trust{i+1:02d}" + "1" * 34
+        nodes.append({
+            "id": trusted_address,
+            "label": f"{trusted_address[:4]}...{trusted_address[-4:]}",
+            "type": "trusted"
+        })
+        
+        # Always connect to wallet
+        edges.append({
+            "source": wallet_address,
+            "target": trusted_address,
+            "weight": 2 + i,
+            "type": "transfer"
+        })
+    
+    return jsonify({
+        "nodes": nodes,
+        "edges": edges
+    })
     
 @app.route('/api/phishing')
 def api_phishing_alerts():

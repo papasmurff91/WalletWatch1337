@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Network Relationship Graph{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="share-2"></i>
+                    Network Relationship Graph
+                </h5>
+                <div>
+                    <button id="refreshBtn" class="btn btn-sm btn-light">
+                        <i data-feather="refresh-cw"></i> Refresh
+                    </button>
+                    <button id="layoutBtn" class="btn btn-sm btn-light ms-2">
+                        <i data-feather="layout"></i> Change Layout
+                    </button>
+                    <button class="btn btn-sm btn-light ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel">
+                        <i data-feather="filter"></i> Filters
+                    </button>
+                </div>
+            </div>
+            <div class="collapse" id="filterPanel">
+                <div class="card-body border-bottom">
+                    <form id="graphFilterForm">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="filterAddress" class="form-label">Address Contains</label>
+                                <input type="text" class="form-control" id="filterAddress" name="address">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="filterActivityType" class="form-label">Activity Type</label>
+                                <select class="form-select" id="filterActivityType" name="activityType">
+                                    <option value="">All</option>
+                                    <option value="transfer">Transfers</option>
+                                    <option value="swap">Swaps</option>
+                                    <option value="mint">Token Mints</option>
+                                    <option value="stake">Staking</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="filterRiskLevel" class="form-label">Risk Level</label>
+                                <select class="form-select" id="filterRiskLevel" name="riskLevel">
+                                    <option value="">All</option>
+                                    <option value="high">High Risk</option>
+                                    <option value="medium">Medium Risk</option>
+                                    <option value="low">Low Risk</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="filterTimeFrame" class="form-label">Time Frame</label>
+                                <select class="form-select" id="filterTimeFrame" name="timeFrame">
+                                    <option value="24h">Last 24 Hours</option>
+                                    <option value="7d">Last 7 Days</option>
+                                    <option value="30d">Last 30 Days</option>
+                                    <option value="all">All Time</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                        <button type="button" class="btn btn-secondary" id="resetFilters">Reset</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i data-feather="info"></i>
+                    This graph visualizes the relationships between addresses that have interacted with your wallet or with suspicious addresses.
+                    Thicker edges indicate more transactions between addresses. Red nodes are suspicious addresses, yellow are addresses they've interacted with,
+                    and blue nodes are trusted addresses.
+                </div>
+                
+                <div id="networkGraphContainer" style="height: 600px; background-color: #f8f9fa; border-radius: 5px;">
+                    <div class="text-center py-5" id="loadingIndicator">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Building network graph...</p>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Selected Node Details</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="nodeDetails">
+                                    <p class="text-center text-muted">Select a node in the graph to view details</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Node Statistics</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 text-center">
+                                        <div class="p-3 bg-danger bg-opacity-25 rounded mb-2">
+                                            <h2 id="suspiciousCount">0</h2>
+                                        </div>
+                                        <div>Suspicious</div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="p-3 bg-warning bg-opacity-25 rounded mb-2">
+                                            <h2 id="unknownCount">0</h2>
+                                        </div>
+                                        <div>Unknown</div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="p-3 bg-success bg-opacity-25 rounded mb-2">
+                                            <h2 id="trustedCount">0</h2>
+                                        </div>
+                                        <div>Trusted</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3 pt-3 border-top">
+                                    <h6>Legend</h6>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="d-inline-block me-2" style="width: 16px; height: 16px; background-color: #dc3545; border-radius: 50%;"></span>
+                                        <span>Suspicious Address</span>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="d-inline-block me-2" style="width: 16px; height: 16px; background-color: #ffc107; border-radius: 50%;"></span>
+                                        <span>Unknown Address</span>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="d-inline-block me-2" style="width: 16px; height: 16px; background-color: #0d6efd; border-radius: 50%;"></span>
+                                        <span>Trusted Address</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="d-inline-block me-2" style="width: 16px; height: 16px; background-color: #20c997; border-radius: 50%;"></span>
+                                        <span>Your Wallet</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Sigma.js for the graph visualization -->
+<script src="https://cdn.jsdelivr.net/npm/sigma@2.4.0/build/sigma.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology@0.25.1/dist/graphology.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology-layout@0.6.1/dist/graphology-layout.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology-layout-forceatlas2@0.10.1/dist/graphology-layout-forceatlas2.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initial load of the graph
+        loadNetworkGraph();
+        
+        // Event listeners
+        document.getElementById('refreshBtn').addEventListener('click', loadNetworkGraph);
+        document.getElementById('layoutBtn').addEventListener('click', changeGraphLayout);
+        document.getElementById('graphFilterForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            loadNetworkGraph();
+        });
+        document.getElementById('resetFilters').addEventListener('click', () => {
+            document.getElementById('graphFilterForm').reset();
+            loadNetworkGraph();
+        });
+    });
+    
+    let graph = null;
+    let renderer = null;
+    let currentLayout = 'forceatlas2';
+    let walletAddress = '{{ wallet_address }}';
+    
+    function loadNetworkGraph() {
+        // Show loading indicator
+        document.getElementById('loadingIndicator').style.display = 'block';
+        
+        // Get filter values if any
+        const form = document.getElementById('graphFilterForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        
+        for (const [key, value] of formData.entries()) {
+            if (value) {
+                params.append(key, value);
+            }
+        }
+        
+        // For demonstration, we'll create a mock network graph
+        // In a real implementation, this would fetch data from an API endpoint
+        // that returns network relationship data
+        
+        setTimeout(() => {
+            // Hide loading indicator
+            document.getElementById('loadingIndicator').style.display = 'none';
+            
+            // Create a mock graph of connected addresses
+            createMockNetworkGraph();
+        }, 1000);
+    }
+    
+    function createMockNetworkGraph() {
+        // Create a new graph instance
+        if (renderer) {
+            renderer.kill();
+        }
+        
+        // Create a graph instance
+        graph = new graphology.Graph();
+        
+        // Add your wallet as the central node
+        graph.addNode(walletAddress, {
+            x: 0,
+            y: 0,
+            size: 15,
+            label: `${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`,
+            color: '#20c997',
+            type: 'wallet'
+        });
+        
+        // Add some suspicious addresses
+        const suspiciousAddresses = [
+            'Susp1111111111111111111111111111111',
+            'Susp2222222222222222222222222222222',
+            'Susp3333333333333333333333333333333',
+            'Susp4444444444444444444444444444444',
+            'Susp5555555555555555555555555555555'
+        ];
+        
+        // Add some random addresses that have interacted with suspicious ones
+        const relatedAddresses = [
+            'Rel111111111111111111111111111111111',
+            'Rel222222222222222222222222222222222',
+            'Rel333333333333333333333333333333333',
+            'Rel444444444444444444444444444444444',
+            'Rel555555555555555555555555555555555',
+            'Rel666666666666666666666666666666666',
+            'Rel777777777777777777777777777777777',
+            'Rel888888888888888888888888888888888',
+            'Rel999999999999999999999999999999999',
+            'Rel000000000000000000000000000000000'
+        ];
+        
+        // Add some trusted addresses
+        const trustedAddresses = [
+            'Trust111111111111111111111111111111',
+            'Trust222222222222222222222222222222',
+            'Trust333333333333333333333333333333'
+        ];
+        
+        // Add all nodes
+        suspiciousAddresses.forEach((address, i) => {
+            graph.addNode(address, {
+                x: Math.random(),
+                y: Math.random(),
+                size: 10,
+                label: `${address.substring(0, 4)}...${address.substring(address.length - 4)}`,
+                color: '#dc3545',
+                type: 'suspicious'
+            });
+            
+            // Connect to wallet sometimes
+            if (Math.random() > 0.5) {
+                graph.addEdge(walletAddress, address, {
+                    weight: 1 + Math.floor(Math.random() * 5),
+                    type: 'transfer'
+                });
+            }
+        });
+        
+        relatedAddresses.forEach((address, i) => {
+            graph.addNode(address, {
+                x: Math.random(),
+                y: Math.random(),
+                size: 8,
+                label: `${address.substring(0, 4)}...${address.substring(address.length - 4)}`,
+                color: '#ffc107',
+                type: 'unknown'
+            });
+            
+            // Connect to some suspicious addresses
+            const numConnections = 1 + Math.floor(Math.random() * 3);
+            for (let j = 0; j < numConnections; j++) {
+                const targetIdx = Math.floor(Math.random() * suspiciousAddresses.length);
+                if (!graph.hasEdge(address, suspiciousAddresses[targetIdx])) {
+                    graph.addEdge(address, suspiciousAddresses[targetIdx], {
+                        weight: 1 + Math.floor(Math.random() * 3),
+                        type: Math.random() > 0.5 ? 'transfer' : 'swap'
+                    });
+                }
+            }
+            
+            // Sometimes connect to wallet
+            if (Math.random() > 0.7) {
+                graph.addEdge(walletAddress, address, {
+                    weight: 1 + Math.floor(Math.random() * 3),
+                    type: 'transfer'
+                });
+            }
+            
+            // Sometimes connect to other random addresses
+            if (Math.random() > 0.7) {
+                const targetIdx = Math.floor(Math.random() * relatedAddresses.length);
+                if (targetIdx !== i && !graph.hasEdge(address, relatedAddresses[targetIdx])) {
+                    graph.addEdge(address, relatedAddresses[targetIdx], {
+                        weight: 1 + Math.floor(Math.random() * 2),
+                        type: Math.random() > 0.5 ? 'transfer' : 'swap'
+                    });
+                }
+            }
+        });
+        
+        trustedAddresses.forEach((address, i) => {
+            graph.addNode(address, {
+                x: Math.random(),
+                y: Math.random(),
+                size: 8,
+                label: `${address.substring(0, 4)}...${address.substring(address.length - 4)}`,
+                color: '#0d6efd',
+                type: 'trusted'
+            });
+            
+            // Always connect to wallet
+            graph.addEdge(walletAddress, address, {
+                weight: 2 + Math.floor(Math.random() * 5),
+                type: 'transfer'
+            });
+            
+            // Sometimes connect to other trusted addresses
+            if (Math.random() > 0.5) {
+                const targetIdx = Math.floor(Math.random() * trustedAddresses.length);
+                if (targetIdx !== i && !graph.hasEdge(address, trustedAddresses[targetIdx])) {
+                    graph.addEdge(address, trustedAddresses[targetIdx], {
+                        weight: 1 + Math.floor(Math.random() * 3),
+                        type: Math.random() > 0.5 ? 'transfer' : 'stake'
+                    });
+                }
+            }
+        });
+        
+        // Update counters
+        document.getElementById('suspiciousCount').textContent = suspiciousAddresses.length;
+        document.getElementById('unknownCount').textContent = relatedAddresses.length;
+        document.getElementById('trustedCount').textContent = trustedAddresses.length;
+        
+        // Render the graph
+        const container = document.getElementById('networkGraphContainer');
+        
+        renderer = new Sigma(graph, container, {
+            renderEdgeLabels: false,
+            labelRenderedSizeThreshold: 0,
+            labelSize: 12,
+            edgeWidth: edge => graph.getEdgeAttribute(edge, 'weight') / 2,
+            nodeSize: 'size'
+        });
+        
+        // Apply the initial layout
+        applyGraphLayout(currentLayout);
+        
+        // Register click event for nodes
+        renderer.on('clickNode', ({ node }) => {
+            showNodeDetails(node);
+        });
+    }
+    
+    function showNodeDetails(nodeId) {
+        const nodeDetails = document.getElementById('nodeDetails');
+        const nodeData = graph.getNodeAttributes(nodeId);
+        
+        const nodeType = nodeData.type;
+        let nodeTypeClass = 'bg-warning';
+        let nodeTypeName = 'Unknown Address';
+        
+        if (nodeType === 'suspicious') {
+            nodeTypeClass = 'bg-danger';
+            nodeTypeName = 'Suspicious Address';
+        } else if (nodeType === 'trusted') {
+            nodeTypeClass = 'bg-primary';
+            nodeTypeName = 'Trusted Address';
+        } else if (nodeType === 'wallet') {
+            nodeTypeClass = 'bg-success';
+            nodeTypeName = 'Your Wallet';
+        }
+        
+        // Get connected nodes
+        const connections = [];
+        graph.forEachNeighbor(nodeId, (neighbor, attributes) => {
+            const edgeData = graph.getEdgeAttributes(nodeId, neighbor) || graph.getEdgeAttributes(neighbor, nodeId);
+            connections.push({
+                address: neighbor,
+                label: graph.getNodeAttribute(neighbor, 'label'),
+                type: graph.getNodeAttribute(neighbor, 'type'),
+                weight: edgeData.weight,
+                transactionType: edgeData.type
+            });
+        });
+        
+        // Generate random mock transaction data
+        const transactionCount = Math.floor(Math.random() * 20) + 1;
+        const lastSeen = new Date(Date.now() - Math.floor(Math.random() * 604800000)).toLocaleDateString(); // Random time in last week
+        const firstSeen = new Date(Date.now() - Math.floor(Math.random() * 2592000000)).toLocaleDateString(); // Random time in last month
+        
+        let html = `
+            <div class="alert ${nodeTypeClass} bg-opacity-25">
+                <h5 class="mb-1">${nodeTypeName}</h5>
+                <div class="text-break small">${nodeId}</div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-4 text-center">
+                    <div class="fw-bold">${transactionCount}</div>
+                    <div class="small text-muted">Transactions</div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="fw-bold">${firstSeen}</div>
+                    <div class="small text-muted">First Seen</div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="fw-bold">${lastSeen}</div>
+                    <div class="small text-muted">Last Seen</div>
+                </div>
+            </div>
+            
+            <h6>Connected Addresses (${connections.length})</h6>
+        `;
+        
+        if (connections.length > 0) {
+            html += '<div class="list-group">';
+            connections.forEach(conn => {
+                let connTypeClass = 'bg-warning';
+                if (conn.type === 'suspicious') connTypeClass = 'bg-danger';
+                else if (conn.type === 'trusted') connTypeClass = 'bg-primary';
+                else if (conn.type === 'wallet') connTypeClass = 'bg-success';
+                
+                html += `
+                    <div class="list-group-item p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge ${connTypeClass} me-2"></span>
+                                <span>${conn.label}</span>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary">${conn.transactionType}</span>
+                                <span class="badge bg-dark">${conn.weight} txns</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        } else {
+            html += '<div class="alert alert-secondary">No connections found</div>';
+        }
+        
+        // Add some actions
+        if (nodeType === 'suspicious') {
+            html += `
+                <div class="mt-3">
+                    <h6>Actions</h6>
+                    <button class="btn btn-sm btn-danger me-2">Block Transactions</button>
+                    <button class="btn btn-sm btn-warning">Add to Watchlist</button>
+                </div>
+            `;
+        } else if (nodeType === 'unknown') {
+            html += `
+                <div class="mt-3">
+                    <h6>Actions</h6>
+                    <button class="btn btn-sm btn-warning me-2">Monitor Address</button>
+                    <button class="btn btn-sm btn-success">Mark as Trusted</button>
+                </div>
+            `;
+        }
+        
+        nodeDetails.innerHTML = html;
+    }
+    
+    function applyGraphLayout(layout) {
+        if (layout === 'random') {
+            graphology.layout.random.assign(graph);
+        } else if (layout === 'circular') {
+            graphology.layout.circular.assign(graph);
+        } else if (layout === 'forceatlas2') {
+            // Apply some iterations of ForceAtlas2
+            const settings = {
+                iterations: 100,
+                gravity: 1,
+                scalingRatio: 10
+            };
+            
+            graphology.layout.forceAtlas2.assign(graph, { settings });
+        }
+        
+        renderer.refresh();
+    }
+    
+    function changeGraphLayout() {
+        // Cycle through available layouts
+        if (currentLayout === 'forceatlas2') {
+            currentLayout = 'circular';
+        } else if (currentLayout === 'circular') {
+            currentLayout = 'random';
+        } else {
+            currentLayout = 'forceatlas2';
+        }
+        
+        applyGraphLayout(currentLayout);
+    }
+</script>
+{% endblock %}
