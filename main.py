@@ -575,6 +575,147 @@ def api_raydium_webhook_callback():
         'received_data': webhook_data
     })
 
+@app.route('/api/swaps/jupiter', methods=['GET'])
+def api_jupiter_swaps():
+    """Get recent Jupiter swap transactions"""
+    if not monitor:
+        return jsonify({'error': 'Wallet monitor not initialized'}), 400
+    
+    # Get query parameters
+    limit = int(request.args.get('limit', 10))
+    
+    # Filter transactions that involve Jupiter program IDs
+    jupiter_program_ids = ["JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB", "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"]
+    jupiter_swaps = []
+    
+    for tx in sorted(monitor.transaction_history, key=lambda x: x.get('block_time', 0), reverse=True):
+        # Check if any Jupiter program was involved
+        if any(prog_id in tx.get('program_ids', []) for prog_id in jupiter_program_ids):
+            # Extract swap details
+            for event in tx.get('events', []):
+                if event.get('type') == 'swap' and event.get('program_id') in jupiter_program_ids:
+                    jupiter_swaps.append({
+                        'signature': tx.get('signature'),
+                        'timestamp': tx.get('timestamp'),
+                        'swap_details': event,
+                        'honeypot_flags': tx.get('honeypot_flags', []),
+                        'suspicious_flags': tx.get('suspicious_flags', []),
+                        'associated_accounts': event.get('associated_accounts', [])
+                    })
+                    break
+    
+    return jsonify(jupiter_swaps[:limit])
+
+@app.route('/webhooks/jupiter/alerts', methods=['GET'])
+def api_simulate_jupiter_webhook():
+    """
+    Simulate a Jupiter swap alert webhook for testing purposes
+    This endpoint creates a sample Jupiter swap transaction alert with account tagging
+    """
+    if not monitor:
+        return jsonify({'error': 'Wallet monitor not initialized'}), 400
+    
+    # Create a simulated Jupiter swap alert with account tagging
+    simulated_swap = {
+        'type': 'jupiter_swap_alert',
+        'timestamp': datetime.utcnow().strftime("%b %d, %Y %H:%M:%S"),
+        'signature': '5zLM8GaYKvqBDEWLqH9RJrJd1KT9FxyyKZnMPXKz6yG78xrUZ9WSaQ3KV9XD5U3GpuWbRpwc2Lkz64ui9VoaKbJC',
+        'wallet': wallet_address,
+        'swap_details': {
+            'type': 'swap',
+            'program_id': 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
+            'jupiter_version': '6',
+            'dex_name': 'Jupiter v6',
+            'input_token': 'SOL',
+            'input_amount': 2.25,
+            'output_token': 'SUSPICIOUS TOKEN',
+            'output_amount': 245000,
+            'input_mint': 'So11111111111111111111111111111111111111112',
+            'output_mint': '9zT54JYUYv9Hy6JfenKZP5TfaJ22A6PxLg53BnBvGp9v',
+            'price_impact': 8.7,
+            'exchange_rate': 108889,
+            'risk_level': 'high',
+            'risk_factors': [
+                'Very high price impact: 8.7%',
+                'Token has very few holders (<5)',
+                'Token created in last 12 hours',
+                'Swapping for unknown token not in known token list'
+            ],
+            'account_tags': {
+                'DvH8PrFzKeceSHdKrZgfpPXzVJbvXvwW6wNFUmCrxuCL': 'fee',
+                'CZuPYHki3YxHBJV7AJD6r4YQ5UKBcFm9dfgPiAEPzyiK': 'admin',
+                'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4': 'program'
+            },
+            'associated_accounts': [
+                {
+                    'address': 'DvH8PrFzKeceSHdKrZgfpPXzVJbvXvwW6wNFUmCrxuCL',
+                    'tag': 'fee'
+                },
+                {
+                    'address': 'CZuPYHBJwJ7AJD6r4YQ5UKBcFm9dfgPiAEPzyiK',
+                    'tag': 'admin'
+                },
+                {
+                    'address': 'xT45JSTvKPH3Hy6JfenKZP534bBvGp9v',
+                    'tag': 'token_promoter'
+                }
+            ]
+        },
+        'honeypot_tokens': ['9zT54JYUYv9Hy6JfenKZP5TfaJ22A6PxLg53BnBvGp9v'],
+        'risk_analysis': {
+            'overall_risk': 'critical',
+            'confidence': 0.95,
+            'reasons': [
+                'Very high price impact: 8.7%',
+                'Token has very few holders (<5)',
+                'Token created in last 12 hours',
+                'Token contract contains selling restrictions',
+                'Liquidity locked for only 1 day'
+            ]
+        },
+        'associated_accounts': [
+            {
+                'address': 'DvH8PrFzKeceSHdKrZgfpPXzVJbvXvwW6wNFUmCrxuCL',
+                'tag': 'fee',
+                'platform': 'twitter',
+                'username': 'token_fee_collector'
+            },
+            {
+                'address': 'xT45JSTvKPH3Hy6JfenKZP5534bBvGp9v',
+                'tag': 'token_promoter',
+                'platform': 'twitter',
+                'username': 'crypto_influencer_123'
+            }
+        ]
+    }
+    
+    return jsonify(simulated_swap)
+
+@app.route('/webhooks/jupiter/callback', methods=['POST'])
+def api_jupiter_webhook_callback():
+    """
+    Webhook callback endpoint for external services to receive Jupiter swap alerts
+    This would be called by the monitor when it detects interesting Jupiter swaps with account tagging
+    """
+    if not request.is_json:
+        return jsonify({'error': 'Invalid JSON'}), 400
+    
+    # Process the incoming webhook data (in a real implementation)
+    # Here we just echo it back for testing
+    webhook_data = request.json
+    
+    # In a real implementation, we would validate the webhook data
+    # and process it accordingly
+    
+    # Log the webhook call
+    print(f"Received Jupiter webhook: {json.dumps(webhook_data, indent=2)}")
+    
+    return jsonify({
+        'status': 'success',
+        'message': 'Jupiter swap alert received with account tagging',
+        'received_data': webhook_data
+    })
+
 # Twitter Webhook Routes
 @app.route('/webhooks/twitter/activity', methods=['GET'])
 def twitter_webhook_challenge():
