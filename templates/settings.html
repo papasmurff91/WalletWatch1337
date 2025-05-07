@@ -181,8 +181,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Your Webhook URL</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="webhookUrl" readonly 
-                                        value="https://YOURDOMAIN.com/webhooks/twitter/activity">
+                                    <input type="text" class="form-control" id="webhookUrl" readonly>
                                     <button class="btn btn-outline-secondary" type="button" id="copyWebhookUrl">
                                         <i data-feather="copy"></i> Copy
                                     </button>
@@ -290,6 +289,12 @@
     document.addEventListener('DOMContentLoaded', () => {
         // Load saved settings from localStorage
         loadSettings();
+        
+        // Set dynamic webhook URL based on current domain
+        const webhookUrlInput = document.getElementById('webhookUrl');
+        const protocol = window.location.protocol;
+        const hostname = window.location.host;
+        webhookUrlInput.value = `${protocol}//${hostname}/webhooks/twitter/activity`;
         
         // Set up form submissions
         document.getElementById('generalSettingsForm').addEventListener('submit', function(e) {
@@ -657,6 +662,50 @@ api.register_webhook("https://yourdomain.com/webhooks/twitter/activity", environ
                 alertDiv.remove();
             }, 150);
         }, 5000);
+    }
+    
+    function showModal(title, content) {
+        // Create modal element
+        const modalId = 'dynamicModal';
+        let modalElement = document.getElementById(modalId);
+        
+        // If the modal already exists, remove it first
+        if (modalElement) {
+            document.body.removeChild(modalElement);
+        }
+        
+        // Create a new modal
+        const modalHTML = `
+            <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="${modalId}Label">${title}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            ${content}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to the document
+        const modalContainer = document.createElement('div');
+        modalContainer.id = modalId + 'Container';
+        modalContainer.innerHTML = modalHTML;
+        document.body.appendChild(modalContainer);
+        
+        // Initialize and show the modal
+        const modal = new bootstrap.Modal(document.getElementById(modalId));
+        modal.show();
+        
+        // Replace feather icons
+        feather.replace();
     }
 </script>
 {% endblock %}
