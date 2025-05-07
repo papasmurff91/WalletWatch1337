@@ -461,14 +461,34 @@ function loadRaydiumSwaps() {
 /**
  * Simulate Jupiter swap alert
  */
-function simulateJupiterAlert() {
+function simulateJupiterAlert(sendNotification) {
     const jupiterAlertsContainer = document.getElementById('jupiterSwapAlerts');
     jupiterAlertsContainer.innerHTML = '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
     
-    fetch('/webhooks/jupiter/alerts')
+    // If sendNotification is true, add the query parameter to trigger notifications
+    const endpoint = sendNotification 
+        ? '/webhooks/jupiter/alerts?send_notification=true' 
+        : '/webhooks/jupiter/alerts';
+    
+    fetch(endpoint)
         .then(response => response.json())
         .then(data => {
-            let html = '<div class="alert alert-info">Simulated Jupiter Swap Alert</div>';
+            let html = '';
+            
+            // If notifications were sent, show a success message
+            if (data.notification_sent) {
+                html = `<div class="alert alert-success">
+                    <i class="fas fa-bell me-2"></i>
+                    Jupiter Swap Alert sent to notification channels
+                    <div class="mt-2">
+                        ${data.channels.telegram ? '<span class="badge bg-primary me-1">Telegram</span>' : ''}
+                        ${data.channels.discord ? '<span class="badge bg-primary me-1">Discord</span>' : ''}
+                        ${data.channels.twitter ? '<span class="badge bg-primary me-1">Twitter</span>' : ''}
+                    </div>
+                </div>`;
+            } else {
+                html = '<div class="alert alert-info">Simulated Jupiter Swap Alert (no notifications sent)</div>';
+            }
             
             html += '<div class="list-group">';
             
