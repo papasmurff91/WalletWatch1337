@@ -57,6 +57,7 @@ class WalletMonitor:
         """Get the name of a DEX based on its program ID"""
         dex_names = {
             "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB": "Jupiter",
+            "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": "Jupiter v6", 
             "RVKd61ztZW9GdKz6Y8qEJ4zQ2LkWcE6gY6z7mY3bR2U": "Meteora",
             "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX": "Openbook",
             "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP": "Orca",
@@ -64,6 +65,125 @@ class WalletMonitor:
         }
         return dex_names.get(program_id, "Unknown DEX")
         
+    def _parse_jupiter_swap(self, tx, sent_tokens, received_tokens):
+        """
+        Parse a Jupiter swap transaction to extract detailed information
+        
+        Returns a dictionary with detailed swap information or None if parsing fails
+        """
+        try:
+            # Extract basic information
+            result = {}
+            
+            # Get transaction logs if available
+            logs = tx.get("meta", {}).get("logMessages", [])
+            
+            # Get accounts used in transaction
+            accounts = []
+            for key_obj in tx.get("transaction", {}).get("message", {}).get("accountKeys", []):
+                accounts.append(key_obj.get("pubkey"))
+            
+            # Extract Jupiter-specific information from logs
+            for log in logs:
+                # Extract route information (Jupiter often logs the route in transactions)
+                if "route" in log.lower() and "hops" in log.lower():
+                    result["route_info"] = log
+                    
+                # Price impact detection
+                if "price impact" in log.lower() or "impact" in log.lower():
+                    match = re.search(r"impact: ([0-9.]+)%", log.lower())
+                    if match:
+                        result["price_impact"] = float(match.group(1))
+                    
+                # Slippage detection
+                if "slippage" in log.lower():
+                    match = re.search(r"slippage: ([0-9.]+)%", log.lower())
+                    if match:
+                        result["slippage"] = float(match.group(1))
+                        
+                # Extract version info if present
+                if "jupiter" in log.lower() and "v" in log.lower():
+                    match = re.search(r"jupiter\s+v([0-9]+)", log.lower())
+                    if match:
+                        result["jupiter_version"] = match.group(1)
+            
+            # Get account tags - Jupiter often has accounts tagged in the transaction
+            # like MEV protection accounts, fee accounts, etc.
+            account_tags = {}
+            for log in logs:
+                if "account:" in log.lower() and ":" in log:
+                    parts = log.split(":")
+                    if len(parts) >= 3:
+                        tag = parts[1].strip()
+                        account = parts[2].strip()
+                        account_tags[account] = tag
+            
+            if account_tags:
+                result["account_tags"] = account_tags
+            
+            # Get swap path if available from inner instructions
+            swap_path = []
+            inner_instructions = tx.get("meta", {}).get("innerInstructions", [])
+            for inner_ix_group in inner_instructions:
+                for inner_ix in inner_ix_group.get("instructions", []):
+                    if inner_ix.get("programId") in ["JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB", "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"]:
+                        for account in inner_ix.get("accounts", []):
+                            if account not in swap_path:
+                                swap_path.append(account)
+            
+            if swap_path:
+                result["swap_path"] = swap_path[:5]  # Limit to first 5 for brevity
+            
+            # Calculate exchange rate and USD value for the swap
+            if sent_tokens and received_tokens:
+                input_amount = sent_tokens[0].get("amount", 0)
+                output_amount = received_tokens[0].get("amount", 0)
+                
+                if input_amount and output_amount:
+                    result["exchange_rate"] = output_amount / input_amount
+                    
+                    # Calculate USD value if either token is a stablecoin
+                    if sent_tokens[0].get("token_name") in ["USDC", "USDT"]:
+                        result["usd_value"] = input_amount
+                    elif received_tokens[0].get("token_name") in ["USDC", "USDT"]:
+                        result["usd_value"] = output_amount
+            
+            # Risk analysis for Jupiter swaps
+            risk_level = "low"
+            risk_factors = []
+            
+            # Check for high price impact (>1%)
+            if result.get("price_impact", 0) > 1.0:
+                risk_level = "medium"
+                risk_factors.append(f"High price impact: {result.get('price_impact')}%")
+                
+            # Check for very high price impact (>5%)
+            if result.get("price_impact", 0) > 5.0:
+                risk_level = "high"
+                risk_factors.append(f"Very high price impact: {result.get('price_impact')}%")
+            
+            # Check for suspicious exchange rate (for tokens that should be ~1:1)
+            stablecoins = ["USDC", "USDT"]
+            if (sent_tokens[0].get("token_name") in stablecoins and 
+                received_tokens[0].get("token_name") in stablecoins and
+                abs(1 - result.get("exchange_rate", 1)) > 0.02):
+                risk_level = "high"
+                risk_factors.append(f"Unusual stablecoin exchange rate: {result.get('exchange_rate', 0):.4f}")
+            
+            # Check for new tokens (potentially risky)
+            if received_tokens and received_tokens[0].get("mint", "") not in TOKEN_MAP:
+                risk_level = max(risk_level, "medium")
+                risk_factors.append("Swapping for unknown token not in known token list")
+            
+            result["risk_level"] = risk_level
+            result["risk_factors"] = risk_factors
+            
+            return result
+            
+        except Exception as e:
+            self.log_message(f"Error parsing Jupiter swap: {e}")
+            return None
+            
     def _parse_raydium_swap(self, tx, sent_tokens, received_tokens):
         """
         Parse a Raydium swap transaction to extract detailed information
@@ -324,6 +444,31 @@ class WalletMonitor:
                             raydium_details = self._parse_raydium_swap(tx, sent_tokens, received_tokens)
                             if raydium_details:
                                 swap_event.update(raydium_details)
+                                
+                        # Detailed Jupiter swap parsing for better alerts
+                        elif program_id in ["JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB", "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"]:  # Jupiter
+                            jupiter_details = self._parse_jupiter_swap(tx, sent_tokens, received_tokens)
+                            if jupiter_details:
+                                swap_event.update({
+                                    "price_impact": jupiter_details.get("price_impact"),
+                                    "slippage": jupiter_details.get("slippage"),
+                                    "exchange_rate": jupiter_details.get("exchange_rate"),
+                                    "risk_level": jupiter_details.get("risk_level", "low"),
+                                    "risk_factors": jupiter_details.get("risk_factors", []),
+                                    "account_tags": jupiter_details.get("account_tags", {}),
+                                    "swap_path": jupiter_details.get("swap_path", []),
+                                    "route_info": jupiter_details.get("route_info"),
+                                    "jupiter_version": jupiter_details.get("jupiter_version", "")
+                                })
+                                
+                                # Extract any associated accounts for tagging
+                                associated_accounts = []
+                                for account, tag in jupiter_details.get("account_tags", {}).items():
+                                    if tag.lower() in ["fee", "referral", "admin", "authority"]:
+                                        associated_accounts.append({"address": account, "tag": tag})
+                                
+                                if associated_accounts:
+                                    swap_event["associated_accounts"] = associated_accounts
                     
                     transaction_data["events"].append(swap_event)
                     
@@ -334,6 +479,10 @@ class WalletMonitor:
                             f"{swap_event['input_token']} → {swap_event['output_amount']:.4f} "
                             f"{swap_event['output_token']}"
                         )
+                        
+                        # Additional logging for risk factors if present
+                        if "risk_factors" in swap_event and swap_event["risk_factors"]:
+                            self.log_message(f"⚠️ Swap risk level: {swap_event.get('risk_level', 'low')} - {', '.join(swap_event['risk_factors'])}")
                     
                     # Check if any honeypot tokens were involved
                     honeypot_tokens = []
@@ -354,6 +503,63 @@ class WalletMonitor:
                             "wallet": self.wallet_address,
                             "swap_details": swap_event,
                             "honeypot_tokens": honeypot_tokens
+                        }
+                    
+                    # If this was a Jupiter swap with risk factors or honeypot tokens, prepare webhook data
+                    elif program_id in ["JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB", "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"] and \
+                        (honeypot_tokens or swap_event.get("risk_level") in ["medium", "high"]):
+                        
+                        # Create risk analysis information
+                        risk_analysis = {
+                            "overall_risk": "critical" if honeypot_tokens else swap_event.get("risk_level", "low"),
+                            "confidence": 0.95 if honeypot_tokens else 0.7,
+                            "reasons": []
+                        }
+                        
+                        # Add reasons based on risk factors and honeypot status
+                        if swap_event.get("risk_factors"):
+                            risk_analysis["reasons"].extend(swap_event.get("risk_factors"))
+                            
+                        if honeypot_tokens:
+                            for mint in honeypot_tokens:
+                                # Find the honeypot flag for this mint to get reasons
+                                for flag in transaction_data.get("honeypot_flags", []):
+                                    if flag.get("mint") == mint:
+                                        risk_analysis["reasons"].extend(flag.get("reasons", []))
+                        
+                        # Get associated accounts for tagging in social media alerts
+                        associated_accounts = []
+                        if "associated_accounts" in swap_event:
+                            associated_accounts = swap_event["associated_accounts"]
+                            
+                        # Find other associated accounts via the social media monitor if available
+                        social_monitor = None
+                        if hasattr(self.notification_service, 'twitter_service') and hasattr(self.notification_service.twitter_service, 'social_monitor'):
+                            social_monitor = self.notification_service.twitter_service.social_monitor
+                        
+                        # Use social media monitor to find associated accounts for output token
+                        if social_monitor and received_tokens:
+                            output_mint = received_tokens[0].get("mint", "")
+                            if output_mint:
+                                found_accounts = social_monitor.find_associated_accounts(output_mint)
+                                if found_accounts:
+                                    for account in found_accounts:
+                                        if account not in [a.get("address") for a in associated_accounts]:
+                                            associated_accounts.append({
+                                                "address": account,
+                                                "tag": "token_promoter"
+                                            })
+                        
+                        # Store the webhook data in the transaction for API consumption
+                        transaction_data["webhook_data"] = {
+                            "type": "jupiter_swap_alert",
+                            "signature": transaction_data["signature"],
+                            "timestamp": transaction_data["timestamp"],
+                            "wallet": self.wallet_address,
+                            "swap_details": swap_event,
+                            "honeypot_tokens": honeypot_tokens,
+                            "risk_analysis": risk_analysis,
+                            "associated_accounts": associated_accounts
                         }
                     
                     break

@@ -472,7 +472,7 @@ def api_check_phishing():
         'reason': reason
     })
 
-# Raydium Swap Webhook Routes
+# DEX Swap Webhook Routes
 @app.route('/api/swaps/raydium', methods=['GET'])
 def api_raydium_swaps():
     """Get recent Raydium swap transactions"""
