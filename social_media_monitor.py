@@ -52,6 +52,63 @@ class SocialMediaMonitor:
         
         return False, None
         
+    def find_associated_accounts(self, address):
+        """
+        Search for Twitter accounts associated with a suspicious address
+        Returns a list of account info (username, id, recent_mentions)
+        """
+        if not self.twitter_service:
+            return []
+            
+        associated_accounts = []
+        
+        try:
+            # Search for recent tweets mentioning this address
+            search_query = f"{address}"
+            search_results = self.twitter_service.search_tweets(search_query, count=20)
+            
+            if not search_results or not search_results.get('success', False):
+                return []
+                
+            tweets = search_results.get('tweets', [])
+            
+            # Extract unique accounts and count their mentions of the address
+            account_mentions = {}
+            
+            for tweet in tweets:
+                if 'user' in tweet and 'screen_name' in tweet['user'] and 'id_str' in tweet['user']:
+                    username = tweet['user']['screen_name']
+                    user_id = tweet['user']['id_str']
+                    
+                    if username not in account_mentions:
+                        account_mentions[username] = {
+                            'username': username,
+                            'user_id': user_id,
+                            'mention_count': 0,
+                            'recent_tweet': None
+                        }
+                    
+                    account_mentions[username]['mention_count'] += 1
+                    
+                    # Keep the most recent tweet as an example
+                    if not account_mentions[username]['recent_tweet']:
+                        account_mentions[username]['recent_tweet'] = {
+                            'id': tweet.get('id_str'),
+                            'text': tweet.get('text'),
+                            'created_at': tweet.get('created_at')
+                        }
+            
+            # Convert to a list and sort by mention count (most mentions first)
+            associated_accounts = list(account_mentions.values())
+            associated_accounts.sort(key=lambda x: x['mention_count'], reverse=True)
+            
+            # Limit to the top 5 most frequent posters
+            return associated_accounts[:5]
+            
+        except Exception as e:
+            print(f"Error finding associated accounts: {str(e)}")
+            return []
+        
     def process_tweet(self, tweet_data, username=None):
         """
         Process a tweet for Solana addresses and check for suspicious activity
@@ -82,28 +139,44 @@ class SocialMediaMonitor:
         # Check each address for suspicious activity
         suspicious_addresses = []
         reasons = []
+        associated_accounts = []
         
         for address in addresses:
             is_suspicious, reason = self.check_address_suspicion(address)
             if is_suspicious:
                 suspicious_addresses.append(address)
-                reasons.append(f"{address}: {reason}")
+                
+                # Find associated accounts for this suspicious address
+                accounts = self.find_associated_accounts(address)
+                if accounts:
+                    account_mentions = [f"@{acc['username']} ({acc['mention_count']} mentions)" for acc in accounts]
+                    associated_str = ", ".join(account_mentions[:3])  # Limit to first 3 for readability
+                    if len(account_mentions) > 3:
+                        associated_str += f" and {len(account_mentions) - 3} more"
+                    
+                    reason_text = f"{address}: {reason} - Associated accounts: {associated_str}"
+                    associated_accounts.extend(accounts)
+                else:
+                    reason_text = f"{address}: {reason}"
+                
+                reasons.append(reason_text)
                 
         # Record this alert if suspicious addresses were found
         if suspicious_addresses and username:
-            self.log_social_alert(username, suspicious_addresses, reasons)
+            self.log_social_alert(username, suspicious_addresses, reasons, associated_accounts)
             return True, username, suspicious_addresses, reasons
             
         return False, username, addresses, []
         
-    def log_social_alert(self, username, addresses, reasons):
+    def log_social_alert(self, username, addresses, reasons, associated_accounts=None):
         """Log a social media alert for future reference"""
         alert = {
             'timestamp': datetime.now().isoformat(),
             'platform': 'twitter',
             'username': username,
             'addresses': addresses,
-            'reasons': reasons
+            'reasons': reasons,
+            'associated_accounts': associated_accounts or []
         }
         
         self.social_alerts.append(alert)
@@ -148,18 +221,45 @@ class SocialMediaMonitor:
                     is_suspicious, username, addresses, reasons = self.process_tweet(tweet, screen_name)
                     
                     if is_suspicious:
-                        suspicious_content.append({
+                        # Get the alert that was just created - it will have the associated accounts
+                        alert = None
+                        if self.social_alerts:
+                            alert = self.social_alerts[-1]
+                        
+                        # Include associated accounts in the suspicious content
+                        alert_content = {
                             'username': username,
                             'addresses': addresses,
-                            'reasons': reasons
-                        })
+                            'reasons': reasons,
+                            'associated_accounts': alert.get('associated_accounts', []) if alert else []
+                        }
+                        
+                        suspicious_content.append(alert_content)
+                        
+                        # Create a message that includes associated accounts if available
+                        warning_message = f"⚠️ Warning: Detected suspicious address(es) posted by @{username}."
+                        
+                        # If there are associated accounts, mention them in the alert
+                        if alert and alert.get('associated_accounts'):
+                            # Get the top 2 most mentioned accounts
+                            top_accounts = sorted(
+                                alert['associated_accounts'], 
+                                key=lambda x: x.get('mention_count', 0), 
+                                reverse=True
+                            )[:2]
+                            
+                            if top_accounts:
+                                account_tags = [f"@{acc['username']}" for acc in top_accounts]
+                                warning_message += f" Associated accounts: {', '.join(account_tags)}"
+                        
+                        warning_message += " Check our dashboard for details."
                         
                         # Add action to post a reply if appropriate
                         if self.twitter_service:
                             actions.append({
                                 'action': 'post_alert',
                                 'platform': 'twitter',
-                                'message': f"⚠️ Warning: Detected suspicious address(es) posted by @{username}. Check our dashboard for details.",
+                                'message': warning_message,
                                 'in_reply_to': tweet.get('id_str')
                             })
                             
@@ -168,11 +268,7 @@ class SocialMediaMonitor:
                                 'action': 'record_alert',
                                 'platform': 'website',
                                 'send_sms': False,
-                                'details': {
-                                    'username': username,
-                                    'addresses': addresses,
-                                    'reasons': reasons
-                                }
+                                'details': alert_content
                             })
         
         return actions, suspicious_content

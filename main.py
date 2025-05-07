@@ -79,6 +79,11 @@ def threat_timeline():
 def network_graph():
     """Render the network relationship graph visualization page"""
     return render_template('network_graph.html', wallet_address=wallet_address)
+    
+@app.route('/social-alerts')
+def social_alerts():
+    """Render the social media alerts page"""
+    return render_template('social_alerts.html', wallet_address=wallet_address)
 
 @app.route('/api/transactions')
 def api_transactions():
@@ -436,6 +441,20 @@ def api_phishing_alerts():
     limit = int(request.args.get('limit', 5))
     
     alerts = phishing_detector.get_recent_alerts(limit)
+    return jsonify(alerts)
+    
+@app.route('/api/social-alerts')
+def api_social_media_alerts():
+    """Get list of social media alerts about suspicious addresses"""
+    social_monitor = get_social_media_monitor()
+    
+    if not social_monitor:
+        return jsonify({'error': 'Social media monitor not initialized'}), 400
+    
+    # Get query parameters
+    limit = int(request.args.get('limit', 10))
+    
+    alerts = social_monitor.get_recent_alerts(limit)
     return jsonify(alerts)
     
 @app.route('/api/phishing/check', methods=['POST'])

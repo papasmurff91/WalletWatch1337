@@ -1,0 +1,585 @@
+{% extends "base.html" %}
+
+{% block title %}Solana Wallet Monitor - Social Media Alerts{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="twitter"></i>
+                    Social Media Alerts
+                </h5>
+                <div>
+                    <button id="refreshBtn" class="btn btn-sm btn-light">
+                        <i data-feather="refresh-cw"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i data-feather="info"></i>
+                    This dashboard shows suspicious Solana addresses detected in social media posts. The system automatically identifies accounts that frequently post suspicious addresses.
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Platform</th>
+                                <th>Username</th>
+                                <th>Suspicious Addresses</th>
+                                <th>Associated Accounts</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="socialAlertsTable">
+                            <!-- Social alerts will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noAlertsMessage" class="text-center py-3 d-none">
+                    <p class="text-muted">No social media alerts detected yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Account Suspicion Network</h5>
+            </div>
+            <div class="card-body">
+                <div id="accountNetworkGraph" style="height: 400px;"></div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">Connections between accounts that share suspicious addresses</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Suspicious Activity Timeline</h5>
+            </div>
+            <div class="card-body">
+                <div id="socialTimelineContainer" style="height: 400px;">
+                    <div id="socialTimelineList" class="timeline-list">
+                        <!-- Timeline items will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="alertDetailsModal" tabindex="-1" aria-labelledby="alertDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="alertDetailsModalLabel">Alert Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="alertDetailsContent">
+                <!-- Details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="exportAlertDetailsBtn">Export Details</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Sigma.js for graph visualization -->
+<script src="https://cdn.jsdelivr.net/npm/sigma@2.4.0/build/sigma.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology@0.25.1/dist/graphology.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology-layout@0.6.1/dist/graphology-layout.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initial load
+        loadSocialAlerts();
+        
+        // Refresh button
+        document.getElementById('refreshBtn').addEventListener('click', loadSocialAlerts);
+        
+        // Export button
+        document.getElementById('exportAlertDetailsBtn').addEventListener('click', () => {
+            alert('In a production environment, this would export the alert details to a file.');
+        });
+    });
+    
+    function loadSocialAlerts() {
+        fetch('/api/social-alerts')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('socialAlertsTable');
+                const noAlertsMessage = document.getElementById('noAlertsMessage');
+                
+                if (!data || data.length === 0) {
+                    tableBody.innerHTML = '';
+                    noAlertsMessage.classList.remove('d-none');
+                    return;
+                }
+                
+                noAlertsMessage.classList.add('d-none');
+                let html = '';
+                
+                // Process the alerts
+                data.forEach((alert, index) => {
+                    const timestamp = new Date(alert.timestamp).toLocaleString();
+                    const platform = alert.platform === 'twitter' ? 
+                        '<i data-feather="twitter" class="text-primary"></i> Twitter' : 
+                        alert.platform;
+                        
+                    const username = alert.username ? `@${alert.username}` : 'Unknown';
+                    
+                    // Format suspicious addresses (truncate if too many)
+                    let addressesDisplay = '';
+                    if (alert.addresses && alert.addresses.length > 0) {
+                        const addresses = alert.addresses.map(addr => {
+                            // Show truncated address
+                            return `<span class="badge bg-danger">${addr.substring(0, 4)}...${addr.substring(addr.length - 4)}</span>`;
+                        });
+                        
+                        if (addresses.length <= 2) {
+                            addressesDisplay = addresses.join(' ');
+                        } else {
+                            addressesDisplay = `${addresses[0]} ${addresses[1]} <span class="badge bg-secondary">+${addresses.length - 2} more</span>`;
+                        }
+                    }
+                    
+                    // Format associated accounts
+                    let associatedAccountsDisplay = '';
+                    if (alert.associated_accounts && alert.associated_accounts.length > 0) {
+                        const accounts = alert.associated_accounts.map(acc => {
+                            return `<span class="badge bg-warning text-dark">@${acc.username}</span>`;
+                        });
+                        
+                        if (accounts.length <= 3) {
+                            associatedAccountsDisplay = accounts.join(' ');
+                        } else {
+                            const displayAccounts = accounts.slice(0, 3);
+                            associatedAccountsDisplay = `${displayAccounts.join(' ')} <span class="badge bg-secondary">+${accounts.length - 3} more</span>`;
+                        }
+                    } else {
+                        associatedAccountsDisplay = '<span class="text-muted">None detected</span>';
+                    }
+                    
+                    html += `
+                        <tr>
+                            <td>${timestamp}</td>
+                            <td>${platform}</td>
+                            <td>${username}</td>
+                            <td>${addressesDisplay}</td>
+                            <td>${associatedAccountsDisplay}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary view-details-btn" data-alert-index="${index}">
+                                    <i data-feather="eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger block-btn">
+                                    <i data-feather="shield"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                tableBody.innerHTML = html;
+                
+                // Initialize feather icons
+                feather.replace();
+                
+                // Add event listeners for the detail buttons
+                document.querySelectorAll('.view-details-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const alertIndex = parseInt(btn.getAttribute('data-alert-index'));
+                        showAlertDetails(data[alertIndex]);
+                    });
+                });
+                
+                // Add event listeners for the block buttons
+                document.querySelectorAll('.block-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        alert('In a production environment, this would block interactions with this account and its suspicious addresses.');
+                    });
+                });
+                
+                // Create network graph
+                createAccountNetworkGraph(data);
+                
+                // Create timeline
+                createSocialTimeline(data);
+            })
+            .catch(error => {
+                console.error('Error loading social alerts:', error);
+                document.getElementById('socialAlertsTable').innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger">
+                            Error loading social media alerts. Please try again later.
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+    
+    function showAlertDetails(alert) {
+        const modal = new bootstrap.Modal(document.getElementById('alertDetailsModal'));
+        const contentDiv = document.getElementById('alertDetailsContent');
+        
+        // Format the timestamp
+        const timestamp = new Date(alert.timestamp).toLocaleString();
+        
+        // Format the username with platform icon
+        const platformIcon = alert.platform === 'twitter' ? 
+            '<i data-feather="twitter" class="text-primary"></i>' : '';
+        const username = alert.username ? `${platformIcon} @${alert.username}` : 'Unknown';
+        
+        // Format the reasons with line breaks
+        const reasons = alert.reasons ? alert.reasons.join('<br>') : 'No specific reasons provided';
+        
+        // Format associated accounts
+        let associatedAccountsHtml = '<p class="text-muted">No associated accounts detected</p>';
+        if (alert.associated_accounts && alert.associated_accounts.length > 0) {
+            associatedAccountsHtml = '<div class="list-group">';
+            alert.associated_accounts.forEach(account => {
+                associatedAccountsHtml += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>@${account.username}</strong>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary">${account.mention_count} mentions</span>
+                            </div>
+                        </div>
+                        ${account.recent_tweet ? `
+                            <div class="small text-muted mt-1">
+                                Recent tweet: "${account.recent_tweet.text}"
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            associatedAccountsHtml += '</div>';
+        }
+        
+        // Create the content
+        const content = `
+            <div class="alert alert-warning">
+                <h5 class="alert-heading">Suspicious Activity Detected</h5>
+                <p>The following suspicious activity was detected on social media:</p>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <h6>Time</h6>
+                    <p>${timestamp}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Username</h6>
+                    <p>${username}</p>
+                </div>
+            </div>
+            
+            <h6>Suspicious Addresses</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Address</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${alert.addresses.map(address => `
+                            <tr>
+                                <td><code>${address}</code></td>
+                                <td><span class="badge bg-danger">Suspicious</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            
+            <h6>Reasons</h6>
+            <div class="alert alert-danger mb-3">
+                ${reasons}
+            </div>
+            
+            <h6>Associated Accounts</h6>
+            ${associatedAccountsHtml}
+            
+            <h6 class="mt-3">Recommended Actions</h6>
+            <div class="list-group">
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i data-feather="shield" class="me-2"></i> Block interactions with these addresses
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i data-feather="alert-triangle" class="me-2"></i> Add addresses to blacklist
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i data-feather="users" class="me-2"></i> Block associated accounts
+                </a>
+            </div>
+        `;
+        
+        contentDiv.innerHTML = content;
+        
+        // Initialize feather icons in the modal
+        feather.replace();
+        
+        // Show the modal
+        modal.show();
+    }
+    
+    function createAccountNetworkGraph(alerts) {
+        // Create a graph instance
+        const graph = new graphology.Graph();
+        
+        // Create nodes for usernames and associated accounts
+        const accountsMap = new Map();
+        const suspiciousAddressesMap = new Map();
+        
+        // Process all alerts to build the network
+        alerts.forEach(alert => {
+            const username = alert.username;
+            
+            // Skip if no username or no addresses
+            if (!username || !alert.addresses || alert.addresses.length === 0) {
+                return;
+            }
+            
+            // Add the main username as a node if not already added
+            if (!accountsMap.has(username)) {
+                accountsMap.set(username, {
+                    id: username,
+                    addresses: new Set(),
+                    isMainPoster: true
+                });
+            }
+            
+            // Add the account's addresses
+            const accountNode = accountsMap.get(username);
+            alert.addresses.forEach(address => {
+                accountNode.addresses.add(address);
+                
+                // Track which accounts mention each address
+                if (!suspiciousAddressesMap.has(address)) {
+                    suspiciousAddressesMap.set(address, new Set());
+                }
+                suspiciousAddressesMap.get(address).add(username);
+            });
+            
+            // Add associated accounts
+            if (alert.associated_accounts && alert.associated_accounts.length > 0) {
+                alert.associated_accounts.forEach(assoc => {
+                    const assocUsername = assoc.username;
+                    
+                    if (!accountsMap.has(assocUsername)) {
+                        accountsMap.set(assocUsername, {
+                            id: assocUsername,
+                            addresses: new Set(),
+                            isMainPoster: false,
+                            mentionCount: assoc.mention_count || 1
+                        });
+                    }
+                    
+                    // Connect associated account to the main account
+                    if (username !== assocUsername) {
+                        // We'll add edges later
+                        const assocNode = accountsMap.get(assocUsername);
+                        assocNode.connectedTo = assocNode.connectedTo || new Set();
+                        assocNode.connectedTo.add(username);
+                    }
+                });
+            }
+        });
+        
+        // Add nodes to the graph
+        accountsMap.forEach((account, username) => {
+            graph.addNode(username, {
+                x: Math.random(),
+                y: Math.random(),
+                size: account.isMainPoster ? 10 : (account.mentionCount || 1) * 5,
+                label: `@${username}`,
+                color: account.isMainPoster ? '#dc3545' : '#ffc107'
+            });
+        });
+        
+        // Add edges between accounts
+        accountsMap.forEach((account, username) => {
+            if (account.connectedTo) {
+                account.connectedTo.forEach(connectedUsername => {
+                    // Only add edge if both nodes exist
+                    if (graph.hasNode(connectedUsername) && !graph.hasEdge(username, connectedUsername)) {
+                        graph.addEdge(username, connectedUsername, {
+                            weight: 1,
+                            color: '#6c757d'
+                        });
+                    }
+                });
+            }
+        });
+        
+        // Add edges between accounts that share the same suspicious addresses
+        suspiciousAddressesMap.forEach((usernames, address) => {
+            const usernamesArray = Array.from(usernames);
+            
+            for (let i = 0; i < usernamesArray.length; i++) {
+                for (let j = i + 1; j < usernamesArray.length; j++) {
+                    const username1 = usernamesArray[i];
+                    const username2 = usernamesArray[j];
+                    
+                    // Only add edge if both nodes exist and edge doesn't already exist
+                    if (graph.hasNode(username1) && graph.hasNode(username2) && 
+                        !graph.hasEdge(username1, username2) && !graph.hasEdge(username2, username1)) {
+                            
+                        graph.addEdge(username1, username2, {
+                            weight: 2,
+                            color: '#dc3545',
+                            type: 'shared_address'
+                        });
+                    }
+                }
+            }
+        });
+        
+        // Render the graph
+        const container = document.getElementById('accountNetworkGraph');
+        const renderer = new Sigma(graph, container, {
+            renderEdgeLabels: false,
+            labelRenderedSizeThreshold: 0
+        });
+        
+        // Apply a layout algorithm
+        graphology.layout.circular.assign(graph);
+        
+        // Refresh the renderer
+        renderer.refresh();
+    }
+    
+    function createSocialTimeline(alerts) {
+        const timelineList = document.getElementById('socialTimelineList');
+        timelineList.innerHTML = '';
+        
+        if (!alerts || alerts.length === 0) {
+            timelineList.innerHTML = '<div class="text-center text-muted py-5">No social media alerts to display</div>';
+            return;
+        }
+        
+        // Sort by timestamp (newest first)
+        const sortedAlerts = [...alerts].sort((a, b) => {
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        });
+        
+        // Create timeline items
+        sortedAlerts.forEach(alert => {
+            const timestamp = new Date(alert.timestamp).toLocaleString();
+            const platformIcon = alert.platform === 'twitter' ? 
+                '<i data-feather="twitter" class="text-primary"></i>' : '';
+            const username = alert.username ? `@${alert.username}` : 'Unknown';
+            
+            // Format the addresses
+            const addressBadges = alert.addresses.map(addr => {
+                const short = `${addr.substring(0, 4)}...${addr.substring(addr.length - 4)}`;
+                return `<span class="badge bg-danger me-1">${short}</span>`;
+            }).join('');
+            
+            const timelineItem = document.createElement('div');
+            timelineItem.className = 'timeline-item';
+            timelineItem.innerHTML = `
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <div class="timeline-time">${timestamp}</div>
+                    <h6 class="timeline-title">
+                        ${platformIcon} ${username} posted suspicious address(es)
+                    </h6>
+                    <div class="timeline-text">
+                        ${addressBadges}
+                        ${alert.associated_accounts && alert.associated_accounts.length > 0 ?
+                            `<div class="mt-1">
+                                <small class="text-muted">Associated with ${alert.associated_accounts.length} other account(s)</small>
+                            </div>` : ''
+                        }
+                    </div>
+                </div>
+            `;
+            
+            timelineList.appendChild(timelineItem);
+        });
+        
+        // Initialize feather icons
+        feather.replace();
+    }
+</script>
+
+<style>
+    /* Timeline styling */
+    .timeline-list {
+        position: relative;
+        padding: 0;
+        margin: 0;
+        overflow-y: auto;
+        max-height: 100%;
+    }
+    
+    .timeline-list:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 20px;
+        width: 2px;
+        background-color: #dee2e6;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-left: 40px;
+        padding-bottom: 20px;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        top: 5px;
+        left: 15px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #dc3545;
+        border: 2px solid #fff;
+        z-index: 1;
+    }
+    
+    .timeline-content {
+        padding: 10px 15px;
+        background-color: #fff;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .timeline-time {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+    
+    .timeline-title {
+        margin-bottom: 5px;
+    }
+    
+    .timeline-text {
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
