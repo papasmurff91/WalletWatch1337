@@ -48,8 +48,8 @@
                                     <!-- Risk Score Gauge -->
                                     <div class="mb-4 text-center">
                                         <div id="riskGaugeContainer" style="height: 200px;"></div>
-                                        <div id="riskScoreValue" class="mt-2 fw-bold fs-4">0</div>
-                                        <div id="riskScoreLabel" class="badge bg-success">Safe</div>
+                                        <div id="riskScoreValue" class="mt-2 fw-bold fs-4 p-2 rounded" data-risk-score="0" data-animated="true">0</div>
+                                        <div id="riskScoreLabel" class="badge bg-success mt-2">Safe</div>
                                     </div>
                                     
                                     <!-- Risk Score History Trend -->
@@ -181,6 +181,8 @@
 {% block scripts %}
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<!-- Include our custom risk score animation JS -->
+<script src="/static/js/risk-score-animation.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {

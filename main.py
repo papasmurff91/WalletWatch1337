@@ -725,6 +725,7 @@ def get_social_media_monitor():
         # Only create if we have the necessary components
         if suspicious_detector and monitor and monitor.honeypot_detector:
             twitter_service = TwitterService()
+            from social_media_monitor import SocialMediaMonitor
             app.social_media_monitor = SocialMediaMonitor(
                 suspicious_detector=suspicious_detector,
                 honeypot_detector=monitor.honeypot_detector,
