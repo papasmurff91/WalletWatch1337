@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Wallet Monitor - Honeypots</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i data-feather="shield"></i>
+                Solana Wallet Monitor
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/transactions">Transactions</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/honeypots">Honeypots</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings">Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="alert-triangle"></i>
+                            Detected Honeypot Tokens
+                        </h5>
+                        <div>
+                            <button id="refreshBtn" class="btn btn-sm btn-light">
+                                <i data-feather="refresh-cw"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i data-feather="info"></i>
+                            <strong>Warning:</strong> These tokens have been detected as potential honeypots based on transaction patterns and other heuristics. 
+                            If you believe a token has been incorrectly flagged, you can add it to your whitelist.
+                        </div>
+                        
+                        <div id="honeypotList">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-danger" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="check-circle"></i>
+                            Whitelisted Tokens
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i data-feather="info"></i>
+                            These tokens have been manually verified as safe and will not trigger honeypot alerts.
+                        </div>
+                        
+                        <div id="whitelistList">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Token Details Modal -->
+    <div class="modal fade" id="tokenModal" tabindex="-1" aria-labelledby="tokenModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tokenModalLabel">Token Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="tokenModalBody">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="whitelistBtn" type="button" class="btn btn-success">Add to Whitelist</button>
+                    <a id="viewOnSolscan" href="#" target="_blank" class="btn btn-primary">View on Solscan</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+            loadHoneypots();
+            loadWhitelist();
+            
+            // Set up event listeners
+            document.getElementById('refreshBtn').addEventListener('click', () => {
+                loadHoneypots();
+                loadWhitelist();
+            });
+        });
+        
+        let tokenModal;
+        let currentMint = '';
+        
+        function loadHoneypots() {
+            const honeypotList = document.getElementById('honeypotList');
+            
+            fetch('/api/honeypots')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        honeypotList.innerHTML = '<p class="text-center">No honeypot tokens detected yet.</p>';
+                        return;
+                    }
+                    
+                    let html = `
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Token</th>
+                                        <th>Price</th>
+                                        <th>Holders</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    data.forEach(token => {
+                        html += `
+                            <tr>
+                                <td class="text-break">${token.mint}</td>
+                                <td>$${token.price.toFixed(6)}</td>
+                                <td>${token.holders}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" 
+                                            onclick="showTokenDetails('${token.mint}')"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#tokenModal">
+                                        Details
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" 
+                                            onclick="whitelistToken('${token.mint}')">
+                                        Whitelist
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    honeypotList.innerHTML = html;
+                    
+                    // Initialize the modal
+                    tokenModal = new bootstrap.Modal(document.getElementById('tokenModal'));
+                })
+                .catch(error => {
+                    console.error('Error loading honeypots:', error);
+                    honeypotList.innerHTML = '<p class="text-center text-danger">Error loading honeypot data.</p>';
+                });
+        }
+        
+        function loadWhitelist() {
+            const whitelistList = document.getElementById('whitelistList');
+            
+            fetch('/api/whitelist')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        whitelistList.innerHTML = '<p class="text-center">No whitelisted tokens yet.</p>';
+                        return;
+                    }
+                    
+                    let html = `
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Token</th>
+                                        <th>Name</th>
+                                        <th>Price</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    data.forEach(token => {
+                        html += `
+                            <tr>
+                                <td class="text-break">${token.mint}</td>
+                                <td>${token.name}</td>
+                                <td>$${token.price.toFixed(6)}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="showTokenDetails('${token.mint}')"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#tokenModal">
+                                        Details
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    whitelistList.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading whitelist:', error);
+                    whitelistList.innerHTML = '<p class="text-center text-danger">Error loading whitelist data.</p>';
+                });
+        }
+        
+        function showTokenDetails(mint) {
+            const modalBody = document.getElementById('tokenModalBody');
+            const viewOnSolscan = document.getElementById('viewOnSolscan');
+            const whitelistBtn = document.getElementById('whitelistBtn');
+            
+            currentMint = mint;
+            
+            // Set the Solscan link
+            viewOnSolscan.href = `https://solscan.io/token/${mint}`;
+            
+            // Set up the whitelist button
+            whitelistBtn.onclick = () => {
+                whitelistToken(mint);
+                tokenModal.hide();
+            };
+            
+            // Fetch token details
+            fetch(`/api/token/${mint}`)
+                .then(response => response.json())
+                .then(token => {
+                    let statusBadge = token.is_honeypot ? 
+                        '<span class="badge bg-danger">Honeypot</span>' :
+                        '<span class="badge bg-success">Whitelisted</span>';
+                        
+                    let html = `
+                        <div class="token-details">
+                            <div class="mb-3 d-flex justify-content-between">
+                                <h6>Status</h6>
+                                ${statusBadge}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Mint Address</h6>
+                                <p class="text-break">${token.mint}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Price</h6>
+                                <p>$${token.price.toFixed(6)}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Holders</h6>
+                                <p>${token.holders}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    modalBody.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading token details:', error);
+                    modalBody.innerHTML = '<p class="text-center text-danger">Error loading token details.</p>';
+                });
+        }
+        
+        function whitelistToken(mint) {
+            fetch(`/api/whitelist/${mint}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadHoneypots();
+                    loadWhitelist();
+                }
+            })
+            .catch(error => {
+                console.error('Error whitelisting token:', error);
+                alert('Error whitelisting token. Please try again.');
+            });
+        }
+    </script>
+</body>
+</html>

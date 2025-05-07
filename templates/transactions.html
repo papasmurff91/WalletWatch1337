@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Wallet Monitor - Transactions</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i data-feather="shield"></i>
+                Solana Wallet Monitor
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/transactions">Transactions</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/honeypots">Honeypots</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings">Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="list"></i>
+                            Transaction History
+                        </h5>
+                        <div>
+                            <button id="refreshBtn" class="btn btn-sm btn-light">
+                                <i data-feather="refresh-cw"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i data-feather="info"></i>
+                            Monitoring wallet: <strong>{{ wallet_address }}</strong>
+                        </div>
+                        
+                        <div class="transaction-filters mb-3">
+                            <div class="row">
+                                <div class="col-md-6 mb-2 mb-md-0">
+                                    <select id="filterType" class="form-select">
+                                        <option value="all">All Transactions</option>
+                                        <option value="sol_transfer">SOL Transfers</option>
+                                        <option value="token_transfer">Token Transfers</option>
+                                        <option value="swap">Swaps</option>
+                                        <option value="honeypot">Honeypot Transactions</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <select id="limit" class="form-select">
+                                        <option value="10">Last 10 transactions</option>
+                                        <option value="25">Last 25 transactions</option>
+                                        <option value="50">Last 50 transactions</option>
+                                        <option value="100">Last 100 transactions</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="transactionList">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transaction Details Modal -->
+    <div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="transactionModalLabel">Transaction Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="transactionModalBody">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a id="viewOnSolscan" href="#" target="_blank" class="btn btn-primary">View on Solscan</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+            loadTransactions();
+            
+            // Set up event listeners
+            document.getElementById('refreshBtn').addEventListener('click', loadTransactions);
+            document.getElementById('filterType').addEventListener('change', loadTransactions);
+            document.getElementById('limit').addEventListener('change', loadTransactions);
+        });
+        
+        let transactionModal;
+        
+        function loadTransactions() {
+            const filterType = document.getElementById('filterType').value;
+            const limit = document.getElementById('limit').value;
+            
+            const transactionList = document.getElementById('transactionList');
+            transactionList.innerHTML = `
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            fetch(`/api/transactions?limit=${limit}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        transactionList.innerHTML = '<p class="text-center">No transactions found.</p>';
+                        return;
+                    }
+                    
+                    // Filter transactions if needed
+                    let filteredData = data;
+                    if (filterType !== 'all') {
+                        filteredData = data.filter(tx => {
+                            if (filterType === 'honeypot' && tx.honeypot_flags.length > 0) {
+                                return true;
+                            }
+                            
+                            return tx.events.some(event => event.type === filterType);
+                        });
+                    }
+                    
+                    if (filteredData.length === 0) {
+                        transactionList.innerHTML = '<p class="text-center">No transactions match the selected filter.</p>';
+                        return;
+                    }
+                    
+                    let html = `
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Signature</th>
+                                        <th>Type</th>
+                                        <th>Details</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    filteredData.forEach(tx => {
+                        const hasHoneypot = tx.honeypot_flags.length > 0;
+                        const rowClass = hasHoneypot ? 'table-danger' : '';
+                        
+                        // Build the event summary
+                        let eventTypes = new Set();
+                        let eventDetails = '';
+                        
+                        tx.events.forEach(event => {
+                            eventTypes.add(event.type);
+                            
+                            if (event.type === 'sol_transfer') {
+                                eventDetails += `
+                                    <span class="badge bg-warning text-dark me-1">
+                                        ${event.direction} ${event.amount.toFixed(4)} SOL
+                                    </span>
+                                `;
+                            } else if (event.type === 'token_transfer') {
+                                let badgeClass = 'bg-info';
+                                if (hasHoneypot) {
+                                    tx.honeypot_flags.forEach(flag => {
+                                        if (flag.mint === event.mint) {
+                                            badgeClass = 'bg-danger';
+                                        }
+                                    });
+                                }
+                                
+                                eventDetails += `
+                                    <span class="badge ${badgeClass} me-1">
+                                        ${event.direction} ${event.amount.toFixed(4)} ${event.token_name}
+                                    </span>
+                                `;
+                            } else if (event.type === 'swap') {
+                                eventDetails += `<span class="badge bg-primary me-1">Swap</span>`;
+                            }
+                        });
+                        
+                        // Get the event types as string
+                        let typeBadges = '';
+                        if (eventTypes.has('sol_transfer')) {
+                            typeBadges += '<span class="badge bg-warning text-dark me-1">SOL</span>';
+                        }
+                        if (eventTypes.has('token_transfer')) {
+                            typeBadges += '<span class="badge bg-info me-1">Token</span>';
+                        }
+                        if (eventTypes.has('swap')) {
+                            typeBadges += '<span class="badge bg-primary me-1">Swap</span>';
+                        }
+                        if (hasHoneypot) {
+                            typeBadges += '<span class="badge bg-danger me-1">Honeypot</span>';
+                        }
+                        
+                        html += `
+                            <tr class="${rowClass}">
+                                <td>${tx.timestamp}</td>
+                                <td class="text-truncate" style="max-width: 150px;">${tx.signature}</td>
+                                <td>${typeBadges}</td>
+                                <td>${eventDetails}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="showTransactionDetails('${tx.signature}')"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#transactionModal">
+                                        Details
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    transactionList.innerHTML = html;
+                    
+                    // Initialize the modal
+                    transactionModal = new bootstrap.Modal(document.getElementById('transactionModal'));
+                })
+                .catch(error => {
+                    console.error('Error loading transactions:', error);
+                    transactionList.innerHTML = '<p class="text-center text-danger">Error loading transactions.</p>';
+                });
+        }
+        
+        function showTransactionDetails(signature) {
+            const modalBody = document.getElementById('transactionModalBody');
+            const viewOnSolscan = document.getElementById('viewOnSolscan');
+            
+            // Set the Solscan link
+            viewOnSolscan.href = `https://solscan.io/tx/${signature}`;
+            
+            // Find the transaction in our loaded data
+            fetch(`/api/transactions?limit=100`)
+                .then(response => response.json())
+                .then(data => {
+                    const tx = data.find(t => t.signature === signature);
+                    if (!tx) {
+                        modalBody.innerHTML = '<p class="text-center">Transaction details not found.</p>';
+                        return;
+                    }
+                    
+                    let html = `
+                        <div class="transaction-details">
+                            <div class="mb-3">
+                                <h6>Signature</h6>
+                                <p class="text-break">${tx.signature}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Timestamp</h6>
+                                <p>${tx.timestamp}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6>Events</h6>
+                                <ul class="list-group">
+                    `;
+                    
+                    tx.events.forEach(event => {
+                        if (event.type === 'sol_transfer') {
+                            html += `
+                                <li class="list-group-item">
+                                    <h6 class="mb-1">SOL Transfer</h6>
+                                    <p class="mb-1">
+                                        <strong>${event.direction}:</strong> ${event.amount.toFixed(9)} SOL
+                                    </p>
+                                    <p class="mb-1">
+                                        <strong>${event.direction === 'Received' ? 'From' : 'To'}:</strong> 
+                                        <a href="https://solscan.io/account/${event.other_address}" target="_blank">
+                                            ${event.other_address}
+                                        </a>
+                                    </p>
+                                </li>
+                            `;
+                        } else if (event.type === 'token_transfer') {
+                            // Check if this is a honeypot token
+                            const isHoneypot = tx.honeypot_flags.some(flag => flag.mint === event.mint);
+                            const warningBadge = isHoneypot ? 
+                                '<span class="badge bg-danger ms-1">Honeypot</span>' : '';
+                            
+                            html += `
+                                <li class="list-group-item ${isHoneypot ? 'list-group-item-danger' : ''}">
+                                    <h6 class="mb-1">Token Transfer ${warningBadge}</h6>
+                                    <p class="mb-1">
+                                        <strong>Token:</strong> ${event.token_name}
+                                    </p>
+                                    <p class="mb-1">
+                                        <strong>Mint:</strong> 
+                                        <a href="https://solscan.io/token/${event.mint}" target="_blank">
+                                            ${event.mint}
+                                        </a>
+                                    </p>
+                                    <p class="mb-1">
+                                        <strong>${event.direction}:</strong> ${event.amount.toFixed(event.decimals)} tokens
+                                    </p>
+                                    <p class="mb-1">
+                                        <strong>${event.direction === 'Received' ? 'From' : 'To'}:</strong> 
+                                        <a href="https://solscan.io/account/${event.other_address}" target="_blank">
+                                            ${event.other_address}
+                                        </a>
+                                    </p>
+                                </li>
+                            `;
+                        } else if (event.type === 'swap') {
+                            html += `
+                                <li class="list-group-item">
+                                    <h6 class="mb-1">Swap Transaction</h6>
+                                    <p class="mb-1">
+                                        <strong>Program ID:</strong> 
+                                        <a href="https://solscan.io/account/${event.program_id}" target="_blank">
+                                            ${event.program_id}
+                                        </a>
+                                    </p>
+                                </li>
+                            `;
+                        }
+                    });
+                    
+                    html += `
+                                </ul>
+                            </div>
+                    `;
+                    
+                    // Show honeypot flags if present
+                    if (tx.honeypot_flags.length > 0) {
+                        html += `
+                            <div class="mb-3">
+                                <h6>Honeypot Detections</h6>
+                                <div class="alert alert-danger">
+                                    <p><strong>Warning:</strong> This transaction involved suspected honeypot tokens.</p>
+                                    <ul>
+                        `;
+                        
+                        tx.honeypot_flags.forEach(flag => {
+                            html += `
+                                <li>
+                                    <strong>Token:</strong> ${flag.mint}<br>
+                                    <strong>Confidence:</strong> ${(flag.confidence * 100).toFixed(0)}%<br>
+                                    <strong>Reasons:</strong>
+                                    <ul>
+                            `;
+                            
+                            flag.reasons.forEach(reason => {
+                                html += `<li>${reason}</li>`;
+                            });
+                            
+                            html += `
+                                    </ul>
+                                </li>
+                            `;
+                        });
+                        
+                        html += `
+                                    </ul>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Show program IDs
+                    html += `
+                        <div class="mb-3">
+                            <h6>Programs Involved</h6>
+                            <ul class="list-group">
+                    `;
+                    
+                    tx.program_ids.forEach(programId => {
+                        html += `
+                            <li class="list-group-item text-break">
+                                <a href="https://solscan.io/account/${programId}" target="_blank">
+                                    ${programId}
+                                </a>
+                            </li>
+                        `;
+                    });
+                    
+                    html += `
+                            </ul>
+                        </div>
+                    </div>
+                    `;
+                    
+                    modalBody.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading transaction details:', error);
+                    modalBody.innerHTML = '<p class="text-center text-danger">Error loading transaction details.</p>';
+                });
+        }
+    </script>
+</body>
+</html>

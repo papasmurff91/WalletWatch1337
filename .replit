@@ -1,0 +1,32 @@
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Solana Wallet Monitor"
+
+[[workflows.workflow]]
+name = "Solana Wallet Monitor"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs"
+waitForPort = 5000
+
+[deployment]
+run = ["sh", "-c", "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
