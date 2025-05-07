@@ -1,8 +1,8 @@
-modules = ["python-3.11"]
+modules = ["nodejs-20", "python-3.11"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "gobject-introspection", "gtk3", "pkg-config", "qhull", "tcl", "tk"]
+packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "gobject-introspection", "gtk3", "pkg-config", "qhull", "tcl", "tk", "try", "imagemagick_light", "mailutils"]
 
 [workflows]
 runButton = "Project"
@@ -30,4 +30,3 @@ run = ["sh", "-c", "pip install flask requests && python main.py --web 4Zw5RN4s7
 
 [[ports]]
 localPort = 5000
-externalPort = 80
