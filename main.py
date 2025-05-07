@@ -11,15 +11,7 @@ import hmac
 import hashlib
 import base64
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Hello, Flask!"
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+from flask import Flask, render_template, jsonify, request, redirect
 from solana_rpc import SolanaRPC
 from honeypot_detector import HoneypotDetector
 from notification_service import NotificationService

@@ -31,3 +31,6 @@ run = ["sh", "-c", "pip install flask requests && python main.py --web 4Zw5RN4s7
 [[ports]]
 localPort = 5000
 externalPort = 80
+git revert 18ae66e144a55679289790c932b92549dd376ad3
+git revert c7e06a0217833bb2a4fd20d29c5fb1bd17a5c231
+git revert de033fa01ed42e36a9e912110ca3b45f252ebe02
