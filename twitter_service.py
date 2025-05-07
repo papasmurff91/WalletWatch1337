@@ -1,6 +1,6 @@
 """
 Twitter/X.com integration service for the Solana Wallet Monitor
-Handles sending alerts to Twitter/X.com via API
+Handles sending alerts to Twitter/X.com via Tweepy
 """
 import os
 import time
@@ -9,6 +9,7 @@ import hmac
 import hashlib
 import base64
 import requests
+import tweepy
 from datetime import datetime
 from config import (
     TWITTER_API_KEY,
@@ -39,8 +40,41 @@ class TwitterService:
         self.max_tweets_per_day = 100  # Twitter API has limits
         self.last_reset = datetime.now()
         
+        # Initialize Tweepy clients
+        self.client = None  # v2 API client
+        self.api = None     # v1.1 API client
+        self._initialize_tweepy()
+        
         # Log initialization
         self.log_message("Twitter service initialized")
+        
+    def _initialize_tweepy(self):
+        """Initialize Tweepy clients for both v1 and v2 APIs"""
+        try:
+            # First try v2 client (preferred)
+            if self.bearer_token:
+                self.client = tweepy.Client(
+                    bearer_token=self.bearer_token,
+                    consumer_key=self.api_key,
+                    consumer_secret=self.api_secret,
+                    access_token=self.access_token,
+                    access_token_secret=self.access_secret
+                )
+                self.log_message("Initialized Tweepy v2 client successfully")
+            
+            # Also set up v1.1 API as fallback
+            if all([self.api_key, self.api_secret, self.access_token, self.access_secret]):
+                auth = tweepy.OAuth1UserHandler(
+                    self.api_key,
+                    self.api_secret,
+                    self.access_token,
+                    self.access_secret
+                )
+                self.api = tweepy.API(auth)
+                self.log_message("Initialized Tweepy v1.1 API successfully")
+                
+        except Exception as e:
+            self.log_message(f"Error initializing Tweepy: {str(e)}")
         
     def log_message(self, msg):
         """Log a message to the log file"""
@@ -146,7 +180,7 @@ class TwitterService:
         return {'Authorization': f'Bearer {self.bearer_token}'}
         
     def post_tweet(self, message, alert_type="general"):
-        """Post a tweet to Twitter/X.com"""
+        """Post a tweet to Twitter/X.com using Tweepy"""
         # Apply rate limiting
         if not self._rate_limit(alert_type):
             return False
@@ -156,80 +190,30 @@ class TwitterService:
         if len(message) > max_length:
             message = message[:max_length-3] + "..."
             
-        # Try using API v2 first, then fall back to v1.1
-        result = self._post_tweet_v2(message)
-        if not result:
-            result = self._post_tweet_v1(message)
-            
-        return result
-        
-    def _post_tweet_v2(self, message):
-        """Post a tweet using Twitter API v2"""
-        if not self.bearer_token:
-            return False
-            
-        url = "https://api.twitter.com/2/tweets"
-        headers = self._get_bearer_token_header()
-        
-        if not headers:
-            return False
-            
-        headers['Content-Type'] = 'application/json'
-        
-        data = {
-            'text': message
-        }
-        
+        # Try using Tweepy client v2 first, then fall back to v1.1
         try:
-            response = requests.post(
-                url,
-                headers=headers,
-                json=data
-            )
-            
-            if response.status_code in [200, 201]:
-                tweet_id = response.json().get('data', {}).get('id')
-                self.log_message(f"Tweet posted successfully. ID: {tweet_id}")
+            if self.client:
+                response = self.client.create_tweet(text=message)
+                tweet_id = response.data['id']
+                self.log_message(f"Tweet posted via Tweepy v2: {message[:30]}... (ID: {tweet_id})")
                 return True
-            else:
-                self.log_message(f"Error posting tweet (v2): {response.status_code} - {response.text}")
-                return False
+            raise ValueError("Tweepy v2 client not available")
+                
         except Exception as e:
-            self.log_message(f"Exception posting tweet (v2): {str(e)}")
-            return False
+            self.log_message(f"Error posting tweet with Tweepy v2: {str(e)}")
             
-    def _post_tweet_v1(self, message):
-        """Post a tweet using Twitter API v1.1 (fallback)"""
-        if not all([self.api_key, self.api_secret, self.access_token, self.access_secret]):
-            return False
-            
-        url = "https://api.twitter.com/1.1/statuses/update.json"
-        params = {
-            'status': message
-        }
-        
-        headers = self._create_oauth1_header('POST', url, params)
-        
-        if not headers:
-            return False
-            
-        try:
-            response = requests.post(
-                url,
-                headers=headers,
-                params=params
-            )
-            
-            if response.status_code == 200:
-                tweet_id = response.json().get('id_str')
-                self.log_message(f"Tweet posted successfully. ID: {tweet_id}")
-                return True
-            else:
-                self.log_message(f"Error posting tweet (v1.1): {response.status_code} - {response.text}")
+            try:
+                if self.api:
+                    status = self.api.update_status(message)
+                    self.log_message(f"Tweet posted via Tweepy v1.1: {message[:30]}... (ID: {status.id})")
+                    return True
+                else:
+                    self.log_message("Tweepy v1.1 API not available")
+                    return False
+                    
+            except Exception as e2:
+                self.log_message(f"Error posting tweet with Tweepy v1.1: {str(e2)}")
                 return False
-        except Exception as e:
-            self.log_message(f"Exception posting tweet (v1.1): {str(e)}")
-            return False
             
     def notify_honeypot_detected(self, mint, reasons, confidence):
         """Send notification when a honeypot token is detected"""
@@ -255,3 +239,87 @@ class TwitterService:
         """Send notification for cross-chain bridge abuse"""
         message = f"🌉 Bridge Abuse Alert!\n\nAddress: {address[:8]}...{address[-8:]}\nDetails: {details}\n\nPossible cross-chain money laundering detected.\n\n#Solana #CrossChain #CryptoSecurity"
         return self.post_tweet(message, "bridge_abuse")
+        
+    def notify_phishing_detected(self, address, reason, confidence):
+        """Send notification when phishing is detected"""
+        message = f"🎣 Phishing attempt detected!\n\n"
+        message += f"Address: {address[:8]}...{address[-8:]}\n"
+        message += f"Type: {reason}\n"
+        message += f"Confidence: {int(confidence * 100)}%\n\n"
+        message += "#Solana #PhishingAlert #CryptoSecurity"
+        
+        return self.post_tweet(message, "phishing_detected")
+        
+    def get_user_timeline(self, username=None, user_id=None, count=10):
+        """Get a user's timeline using Tweepy"""
+        try:
+            if self.client:
+                if user_id:
+                    response = self.client.get_users_tweets(id=user_id, max_results=count)
+                    return response.data if response.data else []
+                elif username:
+                    # First get the user ID from the username
+                    user_response = self.client.get_user(username=username)
+                    if user_response.data:
+                        user_id = user_response.data.id
+                        response = self.client.get_users_tweets(id=user_id, max_results=count)
+                        return response.data if response.data else []
+            
+            # Fallback to v1.1
+            if self.api:
+                if username:
+                    statuses = self.api.user_timeline(screen_name=username, count=count)
+                elif user_id:
+                    statuses = self.api.user_timeline(user_id=user_id, count=count)
+                else:
+                    return []
+                
+                return [status._json for status in statuses]
+                
+        except Exception as e:
+            self.log_message(f"Error getting timeline: {str(e)}")
+            return []
+    
+    def search_tweets(self, query, count=10):
+        """Search for tweets with a specific query"""
+        try:
+            if self.client:
+                response = self.client.search_recent_tweets(query=query, max_results=min(count, 100))
+                return response.data if response.data else []
+            
+            # Fallback to v1.1
+            if self.api:
+                search_results = self.api.search_tweets(q=query, count=count)
+                return [tweet._json for tweet in search_results]
+                
+            return []
+                
+        except Exception as e:
+            self.log_message(f"Error searching tweets: {str(e)}")
+            return []
+    
+    def get_crypto_trends(self):
+        """Get cryptocurrency trending topics on Twitter"""
+        try:
+            crypto_queries = ["#Solana", "#Crypto", "#Bitcoin", "#Ethereum", "#Web3"]
+            results = {}
+            
+            for query in crypto_queries:
+                if self.client:
+                    # V2 API search
+                    response = self.client.search_recent_tweets(
+                        query=query, 
+                        max_results=10
+                    )
+                    tweets = response.data if response.data else []
+                    results[query] = len(tweets)
+                elif self.api:
+                    # V1.1 API search
+                    tweets = self.api.search_tweets(q=query, count=10)
+                    results[query] = len(tweets)
+            
+            return results
+                
+        except Exception as e:
+            self.log_message(f"Error getting crypto trends: {str(e)}")
+            return {}

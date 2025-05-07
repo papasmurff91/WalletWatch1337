@@ -6,4 +6,5 @@ requires-python = ">=3.11"
 dependencies = [
     "flask>=3.1.0",
     "requests>=2.32.3",
+    "tweepy>=4.15.0",
 ]
