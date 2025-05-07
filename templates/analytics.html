@@ -262,34 +262,34 @@
     }
     
     function loadAnalyticsData(timeRange) {
-        // In a real implementation, we would fetch data from the API with the time range parameter
-        // For this demo, we'll use simulated data
-        
         // Show loading state
         document.querySelectorAll('canvas').forEach(canvas => {
             canvas.style.opacity = '0.5';
         });
         
-        // Fetch transaction data
-        fetch(`/api/transactions?limit=100`)
+        // Show loading spinners in metrics
+        document.getElementById('totalTransactions').innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+        document.getElementById('incomingTx').innerHTML = '<div class="spinner-border spinner-border-sm text-success" role="status"><span class="visually-hidden">Loading...</span></div>';
+        document.getElementById('outgoingTx').innerHTML = '<div class="spinner-border spinner-border-sm text-danger" role="status"><span class="visually-hidden">Loading...</span></div>';
+        document.getElementById('swapTx').innerHTML = '<div class="spinner-border spinner-border-sm text-warning" role="status"><span class="visually-hidden">Loading...</span></div>';
+        
+        // Fetch analytics data from our API
+        fetch(`/api/analytics?time_range=${timeRange}`)
             .then(response => response.json())
             .then(data => {
-                // Process the data for the charts
-                const processedData = processTransactionData(data, timeRange);
-                
-                // Update charts
-                renderTransactionVolumeChart(processedData.volumeData);
-                renderTransactionTypesChart(processedData.transactionTypes);
-                renderTokenDistributionChart(processedData.tokenDistribution);
-                renderSolBalanceChart(processedData.solBalance);
-                renderVelocityChart(processedData.velocity);
-                renderProgramsChart(processedData.programs);
+                // Update charts with the processed data from our API
+                renderTransactionVolumeChart(data.volume_data);
+                renderTransactionTypesChart(data.transaction_types);
+                renderTokenDistributionChart(data.token_distribution);
+                renderSolBalanceChart(data.sol_balance);
+                renderVelocityChart(data.program_interactions); // Use program interactions as velocity data
+                renderProgramsChart(data.program_interactions);
                 
                 // Update metrics
-                updateMetrics(processedData.metrics);
+                updateMetrics(data.metrics);
                 
                 // Update risk score
-                updateRiskScore(processedData.riskScore);
+                updateRiskScore(data.risk_score);
                 
                 // Restore full opacity
                 document.querySelectorAll('canvas').forEach(canvas => {
@@ -307,6 +307,12 @@
                     ctx.textAlign = 'center';
                     ctx.fillText('Error loading data', canvas.width / 2, canvas.height / 2);
                 });
+                
+                // Show error in metrics
+                document.getElementById('totalTransactions').textContent = 'Error';
+                document.getElementById('incomingTx').textContent = 'Error';
+                document.getElementById('outgoingTx').textContent = 'Error';
+                document.getElementById('swapTx').textContent = 'Error';
             });
     }
     

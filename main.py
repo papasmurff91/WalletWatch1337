@@ -266,7 +266,275 @@ def api_suspicious_addresses():
     addresses = list(suspicious_detector.suspicious_addresses)
     return jsonify(addresses)
     
-@app.route('/api/threat-timeline')
+@app.route('/api/analytics')
+def api_analytics():
+    """Get analytics data for dashboard visualizations"""
+    if not monitor:
+        return jsonify({'error': 'Wallet monitor not initialized'}), 400
+    
+    # Get query parameters
+    time_range = request.args.get('time_range', '1d')  # Default to 1 day
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Get transaction data
+    transactions = monitor.get_recent_transactions(limit=100)
+    
+    # Process the transaction data for analytics
+    now = datetime.now()
+    
+    # Filter by time range if specified
+    if time_range or (start_date and end_date):
+        filtered_transactions = []
+        
+        if time_range:
+            # Calculate start date based on time range
+            if time_range == '1d':
+                start_time = now.timestamp() - (24 * 60 * 60)  # 24 hours ago
+            elif time_range == '7d':
+                start_time = now.timestamp() - (7 * 24 * 60 * 60)  # 7 days ago
+            elif time_range == '30d':
+                start_time = now.timestamp() - (30 * 24 * 60 * 60)  # 30 days ago
+            elif time_range == 'all':
+                start_time = 0  # All time
+            
+            for tx in transactions:
+                tx_time = tx.get('timestamp', 0)
+                if isinstance(tx_time, str):
+                    try:
+                        tx_time = datetime.fromisoformat(tx_time).timestamp()
+                    except ValueError:
+                        tx_time = 0
+                
+                if tx_time >= start_time:
+                    filtered_transactions.append(tx)
+                    
+        elif start_date and end_date:
+            # Use custom date range
+            try:
+                start_time = datetime.fromisoformat(start_date).timestamp()
+                end_time = datetime.fromisoformat(end_date).timestamp()
+                
+                for tx in transactions:
+                    tx_time = tx.get('timestamp', 0)
+                    if isinstance(tx_time, str):
+                        try:
+                            tx_time = datetime.fromisoformat(tx_time).timestamp()
+                        except ValueError:
+                            tx_time = 0
+                    
+                    if start_time <= tx_time <= end_time:
+                        filtered_transactions.append(tx)
+            except ValueError:
+                filtered_transactions = transactions  # Fallback to all transactions
+    else:
+        filtered_transactions = transactions
+    
+    # Process data for charts
+    
+    # 1. Transaction volume by date
+    volume_by_date = {}
+    for tx in filtered_transactions:
+        date_str = tx.get('date', '').split(' ')[0]  # Get just the date part
+        if not date_str:
+            continue
+            
+        if date_str not in volume_by_date:
+            volume_by_date[date_str] = 0
+        volume_by_date[date_str] += 1
+    
+    # Convert to chart-friendly format
+    volume_data = {
+        'labels': list(volume_by_date.keys()),
+        'datasets': [{
+            'label': 'Transaction Count',
+            'data': list(volume_by_date.values()),
+            'backgroundColor': 'rgba(75, 192, 192, 0.2)',
+            'borderColor': 'rgba(75, 192, 192, 1)',
+            'borderWidth': 1
+        }]
+    }
+    
+    # 2. Transaction types
+    tx_types = {
+        'sol_transfer': 0,
+        'token_transfer': 0,
+        'swap': 0,
+        'other': 0
+    }
+    
+    # 3. Token distribution
+    token_distribution = {}
+    
+    # 4. Transaction direction counts
+    incoming_count = 0
+    outgoing_count = 0
+    
+    # Process events to collect this data
+    for tx in filtered_transactions:
+        # Process transaction types and token distribution
+        has_type = False
+        
+        for event in tx.get('events', []):
+            event_type = event.get('type')
+            
+            # Count transaction types
+            if event_type in tx_types:
+                tx_types[event_type] += 1
+                has_type = True
+            
+            # Count direction
+            if event_type in ['sol_transfer', 'token_transfer']:
+                if event.get('direction') == 'Received':
+                    incoming_count += 1
+                else:
+                    outgoing_count += 1
+            
+            # Token distribution
+            if event_type == 'token_transfer':
+                token_name = event.get('token_name', 'Unknown Token')
+                if token_name not in token_distribution:
+                    token_distribution[token_name] = 0
+                token_distribution[token_name] += 1
+        
+        if not has_type:
+            tx_types['other'] += 1
+    
+    # Sort and limit token distribution to top 10
+    token_distribution = dict(sorted(token_distribution.items(), key=lambda x: x[1], reverse=True)[:10])
+    
+    # Format transaction types for chart
+    tx_types_data = {
+        'labels': list(tx_types.keys()),
+        'datasets': [{
+            'label': 'Transaction Types',
+            'data': list(tx_types.values()),
+            'backgroundColor': [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(75, 192, 192, 0.2)'
+            ],
+            'borderColor': [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)'
+            ],
+            'borderWidth': 1
+        }]
+    }
+    
+    # Format token distribution for chart
+    token_dist_data = {
+        'labels': list(token_distribution.keys()),
+        'datasets': [{
+            'label': 'Token Transactions',
+            'data': list(token_distribution.values()),
+            'backgroundColor': [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(153, 102, 255, 0.2)',
+                'rgba(255, 159, 64, 0.2)',
+                'rgba(199, 199, 199, 0.2)',
+                'rgba(83, 102, 255, 0.2)',
+                'rgba(40, 159, 64, 0.2)',
+                'rgba(210, 199, 199, 0.2)'
+            ],
+            'borderColor': [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)',
+                'rgba(199, 199, 199, 1)',
+                'rgba(83, 102, 255, 1)',
+                'rgba(40, 159, 64, 1)',
+                'rgba(210, 199, 199, 1)'
+            ],
+            'borderWidth': 1
+        }]
+    }
+    
+    # 5. Program interactions
+    program_interactions = {}
+    for tx in filtered_transactions:
+        programs = tx.get('programs', [])
+        for program in programs:
+            program_id = program.get('program_id', 'Unknown')
+            program_name = program.get('name', program_id)
+            if program_name not in program_interactions:
+                program_interactions[program_name] = 0
+            program_interactions[program_name] += 1
+    
+    # Sort and limit program interactions to top 10
+    program_interactions = dict(sorted(program_interactions.items(), key=lambda x: x[1], reverse=True)[:10])
+    
+    program_data = {
+        'labels': list(program_interactions.keys()),
+        'datasets': [{
+            'label': 'Program Interactions',
+            'data': list(program_interactions.values()),
+            'backgroundColor': 'rgba(153, 102, 255, 0.2)',
+            'borderColor': 'rgba(153, 102, 255, 1)',
+            'borderWidth': 1
+        }]
+    }
+    
+    # 6. Calculate risk score
+    risk_score = 0
+    
+    # Check for suspicious activity
+    if suspicious_detector:
+        suspicious_alerts = suspicious_detector.get_recent_alerts(limit=10)
+        risk_score += len(suspicious_alerts) * 10  # Add 10 points for each suspicious alert
+    
+    # Check for honeypot interactions
+    if monitor and monitor.honeypot_detector:
+        honeypot_tokens = monitor.honeypot_detector.get_known_honeypots()
+        for tx in filtered_transactions:
+            for event in tx.get('events', []):
+                if event.get('type') == 'token_transfer':
+                    mint = event.get('mint')
+                    if mint and mint in honeypot_tokens:
+                        risk_score += 15  # Add 15 points for each honeypot interaction
+    
+    # Cap the risk score at 100
+    risk_score = min(risk_score, 100)
+    
+    # Calculate SOL balance over time (simulated for now)
+    # This would normally use real data from transactions
+    sol_balance_data = {
+        'labels': volume_data['labels'],
+        'datasets': [{
+            'label': 'SOL Balance',
+            'data': [10 + i * 0.5 for i in range(len(volume_data['labels']))],  # Simulated balance
+            'backgroundColor': 'rgba(54, 162, 235, 0.2)',
+            'borderColor': 'rgba(54, 162, 235, 1)',
+            'borderWidth': 1,
+            'tension': 0.1
+        }]
+    }
+    
+    # Return all chart data
+    return jsonify({
+        'volume_data': volume_data,
+        'transaction_types': tx_types_data,
+        'token_distribution': token_dist_data,
+        'sol_balance': sol_balance_data,
+        'program_interactions': program_data,
+        'metrics': {
+            'total_transactions': len(filtered_transactions),
+            'incoming': incoming_count,
+            'outgoing': outgoing_count,
+            'swaps': tx_types['swap']
+        },
+        'risk_score': risk_score
+    })
+
 def api_threat_timeline():
     """Get threat timeline data for visualization"""
     if not suspicious_detector:
