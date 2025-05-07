@@ -689,6 +689,23 @@ def api_simulate_jupiter_webhook():
         ]
     }
     
+    # If the URL parameter 'send_notification=true' is present, actually send the notification
+    if request.args.get('send_notification') == 'true':
+        notification_service = NotificationService()
+        notification_service.notify_jupiter_swap(simulated_swap)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Simulated Jupiter swap alert sent to notification channels',
+            'notification_sent': True,
+            'channels': {
+                'telegram': notification_service.telegram_enabled,
+                'discord': notification_service.discord_enabled,
+                'twitter': notification_service.twitter_service.is_enabled()
+            },
+            'swap_data': simulated_swap
+        })
+    
     return jsonify(simulated_swap)
 
 @app.route('/webhooks/jupiter/callback', methods=['POST'])
@@ -728,6 +745,122 @@ def api_jupiter_webhook_callback():
             'message': 'Jupiter data received but not processed as a swap alert',
             'received_data': webhook_data
         })
+
+# Telegram Integration Tests
+@app.route('/api/telegram/test', methods=['GET'])
+def api_test_telegram():
+    """Test the Telegram notification service with a sample message"""
+    # Check if Telegram is configured
+    from notification_service import NotificationService
+    notification_service = NotificationService()
+    
+    if not notification_service.telegram_enabled:
+        return jsonify({
+            'success': False,
+            'error': 'Telegram is not configured. Please set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in environment variables.',
+            'required_env_vars': ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']
+        }), 400
+        
+    # Try sending a test message
+    try:
+        test_message = "🔔 *Telegram Integration Test*\n\nThis is a test message from the Solana Wallet Monitor.\n\nIf you're seeing this, your Telegram notifications are working correctly!\n\nTimestamp: " + datetime.utcnow().strftime("%b %d, %Y %H:%M:%S UTC")
+        success = notification_service.send_telegram(test_message)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Telegram test message sent successfully',
+                'telegram_config': {
+                    'bot_token_set': bool(notification_service.telegram_enabled),
+                    'chat_id_set': bool(notification_service.telegram_enabled)
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to send test message, but Telegram appears to be configured. Check your bot token and chat ID.'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error testing Telegram: {str(e)}'
+        }), 500
+        
+@app.route('/api/telegram/test_jupiter', methods=['GET'])
+def api_test_telegram_jupiter():
+    """Test the Telegram notification service with a simulated Jupiter swap alert"""
+    # Check if Telegram is configured
+    from notification_service import NotificationService
+    notification_service = NotificationService()
+    
+    if not notification_service.telegram_enabled:
+        return jsonify({
+            'success': False,
+            'error': 'Telegram is not configured. Please set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in environment variables.',
+            'required_env_vars': ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']
+        }), 400
+        
+    # Try sending a test Jupiter swap alert
+    try:
+        # Create a simulated Jupiter swap alert
+        simulated_swap = {
+            'type': 'jupiter_swap_alert',
+            'timestamp': datetime.utcnow().strftime("%b %d, %Y %H:%M:%S"),
+            'signature': '5zLM8GaYKvqBDEWLqH9RJrJd1KT9FxyyKZnMPXKz6yG78xrUZ9WSaQ3KV9XD5U3GpuWbRpwc2Lkz64ui9VoaKbJC',
+            'wallet': wallet_address,
+            'swap_details': {
+                'type': 'swap',
+                'program_id': 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
+                'jupiter_version': '6',
+                'dex_name': 'Jupiter v6',
+                'input_token': 'SOL',
+                'input_amount': 2.25,
+                'output_token': 'TEST TOKEN',
+                'output_amount': 245000,
+                'input_mint': 'So11111111111111111111111111111111111111112',
+                'output_mint': '9zT54JYUYv9Hy6JfenKZP5TfaJ22A6PxLg53BnBvGp9v',
+                'price_impact': 8.7,
+                'exchange_rate': 108889,
+                'risk_level': 'high',
+                'risk_factors': [
+                    'Very high price impact: 8.7%',
+                    'Token has very few holders (<5)',
+                    'Token created in last 12 hours',
+                    'Swapping for unknown token not in known token list'
+                ]
+            },
+            'risk_analysis': {
+                'overall_risk': 'critical',
+                'confidence': 0.95,
+                'reasons': [
+                    'Very high price impact: 8.7%',
+                    'Token has very few holders (<5)',
+                    'Token created in last 12 hours',
+                    'Token contract contains selling restrictions'
+                ]
+            }
+        }
+        
+        # Send the notification
+        success = notification_service.notify_jupiter_swap(simulated_swap)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Telegram Jupiter swap alert sent successfully',
+                'telegram_enabled': notification_service.telegram_enabled,
+                'simulated_swap': simulated_swap
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to send Jupiter swap alert via Telegram.'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error testing Telegram Jupiter alert: {str(e)}'
+        }), 500
 
 # Twitter Webhook Routes
 @app.route('/webhooks/twitter/activity', methods=['GET'])
