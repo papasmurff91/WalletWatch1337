@@ -213,6 +213,9 @@
                                 <button type="button" id="testWebhookBtn" class="btn btn-outline-secondary ms-2">
                                     <i data-feather="check-circle"></i> Test Connection
                                 </button>
+                                <button type="button" id="deleteWebhooksBtn" class="btn btn-outline-danger ms-2">
+                                    <i data-feather="trash-2"></i> Delete Webhooks
+                                </button>
                             </div>
                             
                             <hr>
@@ -407,6 +410,82 @@
             .catch(error => {
                 this.disabled = false;
                 this.innerHTML = '<i data-feather="link"></i> Register Webhook with Twitter';
+                feather.replace();
+                showErrorMessage('Error: ' + error.toString());
+            });
+        });
+        
+        // Delete webhooks
+        document.getElementById('deleteWebhooksBtn').addEventListener('click', function() {
+            // Show confirmation dialog
+            if (!confirm('Are you sure you want to delete all registered Twitter webhooks? This cannot be undone.')) {
+                return;
+            }
+            
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+            
+            // Make an API call to delete the webhooks
+            fetch('/api/webhook/twitter/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    environment_name: 'dev'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.disabled = false;
+                this.innerHTML = '<i data-feather="trash-2"></i> Delete Webhooks';
+                feather.replace();
+                
+                if (data.success) {
+                    showSuccessMessage('Webhooks deleted successfully!');
+                    
+                    // Show deletion details
+                    let deletedWebhooksHtml = '';
+                    if (data.deleted_webhooks && data.deleted_webhooks.length > 0) {
+                        deletedWebhooksHtml = `
+                            <h5 class="mt-3">Deleted Webhooks</h5>
+                            <ul class="list-group">
+                        `;
+                        
+                        data.deleted_webhooks.forEach(webhook => {
+                            deletedWebhooksHtml += `
+                                <li class="list-group-item">${webhook}</li>
+                            `;
+                        });
+                        
+                        deletedWebhooksHtml += `</ul>`;
+                    } else {
+                        deletedWebhooksHtml = `
+                            <div class="alert alert-info mt-3">
+                                <i data-feather="info"></i>
+                                No webhooks were found to delete.
+                            </div>
+                        `;
+                    }
+                    
+                    showModal('Webhooks Deleted', `
+                        <div class="alert alert-success">
+                            <h4 class="alert-heading">Webhooks Deleted</h4>
+                            <p>All registered webhooks have been successfully deleted.</p>
+                        </div>
+                        ${deletedWebhooksHtml}
+                        <p class="mt-3">You will no longer receive webhook events from Twitter until you register a new webhook.</p>
+                    `);
+                    
+                    // Replace any feather icons in the modal
+                    feather.replace();
+                } else {
+                    showErrorMessage('Failed to delete webhooks: ' + data.error);
+                }
+            })
+            .catch(error => {
+                this.disabled = false;
+                this.innerHTML = '<i data-feather="trash-2"></i> Delete Webhooks';
                 feather.replace();
                 showErrorMessage('Error: ' + error.toString());
             });

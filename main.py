@@ -365,8 +365,6 @@ def api_test_twitter_webhook():
 @app.route('/api/webhook/twitter/register', methods=['POST'])
 def api_register_twitter_webhook():
     """Register a webhook URL with Twitter"""
-    from twitter_service import TwitterService
-    
     try:
         # Get environment name (optional)
         data = request.json or {}
@@ -406,8 +404,6 @@ def api_register_twitter_webhook():
 @app.route('/api/webhook/twitter/delete', methods=['POST'])
 def api_delete_twitter_webhooks():
     """Delete all registered webhooks"""
-    from twitter_service import TwitterService
-    
     try:
         # Get environment name (optional)
         data = request.json or {}
@@ -440,8 +436,6 @@ def api_delete_twitter_webhooks():
 @app.route('/api/webhook/twitter/status', methods=['GET'])
 def api_get_twitter_webhook_status():
     """Get status of registered webhooks"""
-    from twitter_service import TwitterService
-    
     try:
         # Get environment name (optional)
         environment_name = request.args.get('environment_name', 'dev')

@@ -34,3 +34,11 @@
 [Twitter] [2025-05-07 02:07:37.465324] Initialized Tweepy v1.1 API successfully
 [Twitter] [2025-05-07 02:07:37.465533] Twitter service initialized
 [2025-05-07 02:07:37.466557] Tracking Wallet: 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs
+[Twitter] [2025-05-07 02:08:59.883494] Initialized Tweepy v2 client successfully
+[Twitter] [2025-05-07 02:08:59.883809] Initialized Tweepy v1.1 API successfully
+[Twitter] [2025-05-07 02:08:59.883899] Twitter service initialized
+[2025-05-07 02:08:59.884585] Tracking Wallet: 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs
+[Twitter] [2025-05-07 02:09:18.277097] Initialized Tweepy v2 client successfully
+[Twitter] [2025-05-07 02:09:18.277383] Initialized Tweepy v1.1 API successfully
+[Twitter] [2025-05-07 02:09:18.277475] Twitter service initialized
+[2025-05-07 02:09:18.278049] Tracking Wallet: 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs
