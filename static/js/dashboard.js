@@ -2,104 +2,112 @@
  * Dashboard functionality for Solana Wallet Monitor
  */
 
-// Initialize data refresh
-let refreshInterval = null;
-
-// Start data refresh when document is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize Feather icons if present on page
-    if (typeof feather !== 'undefined') {
-        feather.replace();
-    }
-    
-    // Set up data refresh
     refreshData();
     
     // Refresh data every 30 seconds
-    refreshInterval = setInterval(refreshData, 30000);
+    setInterval(refreshData, 30000);
 });
 
 /**
  * Refresh all dashboard data
  */
 function refreshData() {
-    // Check if these elements exist on the current page
-    if (document.getElementById('transactionList')) {
-        loadTransactions();
-    }
-    
-    if (document.getElementById('honeypotList')) {
-        loadHoneypots();
-    }
-    
-    if (document.getElementById('whitelistList')) {
-        loadWhitelist();
-    }
+    loadTransactions();
+    loadHoneypots();
+    loadWhitelist();
 }
 
 /**
  * Load transaction data
  */
 function loadTransactions() {
+    const transactionsContainer = document.getElementById('recentTransactions');
+    
     fetch('/api/transactions?limit=5')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            const container = document.getElementById('transactionList');
-            
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p class="text-center">No transactions detected yet.</p>';
+            if (data.length === 0) {
+                transactionsContainer.innerHTML = '<p class="text-center">No transactions found.</p>';
                 return;
             }
             
             let html = '<div class="list-group">';
+            
             data.forEach(tx => {
+                const hasHoneypot = tx.honeypot_flags.length > 0;
+                const hasSuspicious = tx.suspicious_flags && tx.suspicious_flags.length > 0;
+                
+                let badgeHtml = '';
+                let itemClass = 'list-group-item-action';
+                
+                if (hasHoneypot) {
+                    badgeHtml += '<span class="badge bg-danger ms-2">Honeypot</span>';
+                    itemClass = 'list-group-item-danger';
+                }
+                
+                if (hasSuspicious) {
+                    badgeHtml += '<span class="badge bg-warning text-dark ms-2">Suspicious</span>';
+                    if (!hasHoneypot) {
+                        itemClass = 'list-group-item-warning';
+                    }
+                }
+                
+                // Get event summary
                 let eventSummary = '';
+                
                 tx.events.forEach(event => {
                     if (event.type === 'sol_transfer') {
-                        eventSummary += `<span class="badge bg-warning text-dark me-1">
-                            ${event.direction} ${event.amount.toFixed(4)} SOL
-                        </span>`;
+                        eventSummary += `
+                            <span class="badge bg-warning text-dark me-1">
+                                ${event.direction} ${event.amount.toFixed(4)} SOL
+                            </span>
+                        `;
                     } else if (event.type === 'token_transfer') {
                         let badgeClass = 'bg-info';
-                        // Check if this is a honeypot token
-                        tx.honeypot_flags.forEach(flag => {
-                            if (flag.mint === event.mint) {
-                                badgeClass = 'bg-danger';
-                            }
-                        });
+                        if (hasHoneypot) {
+                            tx.honeypot_flags.forEach(flag => {
+                                if (flag.mint === event.mint) {
+                                    badgeClass = 'bg-danger';
+                                }
+                            });
+                        }
                         
-                        eventSummary += `<span class="badge ${badgeClass} me-1">
-                            ${event.direction} ${event.amount.toFixed(4)} ${event.token_name}
-                        </span>`;
+                        eventSummary += `
+                            <span class="badge ${badgeClass} me-1">
+                                ${event.direction} ${event.amount.toFixed(4)} ${event.token_name}
+                            </span>
+                        `;
                     } else if (event.type === 'swap') {
-                        eventSummary += `<span class="badge bg-primary me-1">Swap</span>`;
+                        eventSummary += '<span class="badge bg-primary me-1">Swap</span>';
                     }
                 });
                 
                 html += `
-                    <a href="https://solscan.io/tx/${tx.signature}" target="_blank" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1 text-truncate" style="max-width: 60%;">${tx.signature}</h6>
-                            <small>${tx.timestamp}</small>
+                    <a href="/transactions" class="list-group-item ${itemClass}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">${tx.timestamp}</small>
+                            <div>${badgeHtml}</div>
                         </div>
-                        <div class="mt-2">
+                        <div class="mt-1">
                             ${eventSummary}
+                        </div>
+                        <div class="mt-1">
+                            <small class="text-truncate d-inline-block" style="max-width: 100%;">
+                                ${tx.signature}
+                            </small>
                         </div>
                     </a>
                 `;
             });
+            
             html += '</div>';
-            container.innerHTML = html;
+            
+            transactionsContainer.innerHTML = html;
         })
         .catch(error => {
             console.error('Error loading transactions:', error);
-            const container = document.getElementById('transactionList');
-            container.innerHTML = '<p class="text-center text-danger">Error loading transaction data.</p>';
+            transactionsContainer.innerHTML = '<p class="text-center text-danger">Error loading transactions.</p>';
         });
 }
 
@@ -107,45 +115,53 @@ function loadTransactions() {
  * Load honeypot token data
  */
 function loadHoneypots() {
+    const honeypotContainer = document.getElementById('honeypotTokens');
+    
     fetch('/api/honeypots')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            const container = document.getElementById('honeypotList');
-            
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p class="text-center">No honeypot tokens detected yet.</p>';
+            if (data.length === 0) {
+                honeypotContainer.innerHTML = '<p class="text-center">No honeypot tokens detected yet.</p>';
                 return;
             }
             
-            let html = '<ul class="list-group">';
-            data.forEach(token => {
+            let html = '<div class="list-group">';
+            
+            data.slice(0, 3).forEach(token => {
                 html += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge bg-danger me-2">Honeypot</span>
-                            ${token.mint.slice(0, 8)}...${token.mint.slice(-8)}
+                    <a href="/honeypots" class="list-group-item list-group-item-danger list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-danger">Honeypot</span>
+                            </div>
+                            <div>
+                                <small>$${token.price.toFixed(6)}</small>
+                            </div>
                         </div>
-                        <div>
-                            <span class="badge bg-secondary">${token.holders} holders</span>
-                            <button class="btn btn-sm btn-outline-success ms-2" onclick="whitelistToken('${token.mint}')">
-                                Whitelist
-                            </button>
+                        <div class="mt-1">
+                            <small class="text-truncate d-inline-block" style="max-width: 100%;">
+                                ${token.mint}
+                            </small>
                         </div>
-                    </li>
+                    </a>
                 `;
             });
-            html += '</ul>';
-            container.innerHTML = html;
+            
+            if (data.length > 3) {
+                html += `
+                    <a href="/honeypots" class="list-group-item list-group-item-action text-center">
+                        <small>View all ${data.length} honeypot tokens</small>
+                    </a>
+                `;
+            }
+            
+            html += '</div>';
+            
+            honeypotContainer.innerHTML = html;
         })
         .catch(error => {
             console.error('Error loading honeypots:', error);
-            const container = document.getElementById('honeypotList');
-            container.innerHTML = '<p class="text-center text-danger">Error loading honeypot data.</p>';
+            honeypotContainer.innerHTML = '<p class="text-center text-danger">Error loading honeypot data.</p>';
         });
 }
 
@@ -153,74 +169,55 @@ function loadHoneypots() {
  * Load whitelisted token data
  */
 function loadWhitelist() {
+    const whitelistContainer = document.getElementById('whitelistedTokens');
+    
     fetch('/api/whitelist')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            const container = document.getElementById('whitelistList');
-            
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p class="text-center">No whitelisted tokens yet.</p>';
+            if (data.length === 0) {
+                whitelistContainer.innerHTML = '<p class="text-center">No whitelisted tokens yet.</p>';
                 return;
             }
             
-            let html = '<ul class="list-group">';
-            data.forEach(token => {
+            let html = '<div class="list-group">';
+            
+            data.slice(0, 3).forEach(token => {
                 html += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge bg-success me-2">Safe</span>
-                            ${token.name}
+                    <a href="/honeypots" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-success">Whitelisted</span>
+                            </div>
+                            <div>
+                                <small>$${token.price.toFixed(6)}</small>
+                            </div>
                         </div>
                         <div>
-                            <span class="badge bg-primary">$${token.price.toFixed(4)}</span>
+                            <small>${token.name}</small>
                         </div>
-                    </li>
+                        <div class="mt-1">
+                            <small class="text-truncate d-inline-block" style="max-width: 100%;">
+                                ${token.mint}
+                            </small>
+                        </div>
+                    </a>
                 `;
             });
-            html += '</ul>';
-            container.innerHTML = html;
+            
+            if (data.length > 3) {
+                html += `
+                    <a href="/honeypots" class="list-group-item list-group-item-action text-center">
+                        <small>View all ${data.length} whitelisted tokens</small>
+                    </a>
+                `;
+            }
+            
+            html += '</div>';
+            
+            whitelistContainer.innerHTML = html;
         })
         .catch(error => {
             console.error('Error loading whitelist:', error);
-            const container = document.getElementById('whitelistList');
-            container.innerHTML = '<p class="text-center text-danger">Error loading whitelist data.</p>';
+            whitelistContainer.innerHTML = '<p class="text-center text-danger">Error loading whitelist data.</p>';
         });
 }
-
-/**
- * Whitelist a token
- */
-function whitelistToken(mint) {
-    fetch(`/api/whitelist/${mint}`, {
-        method: 'POST'
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            // Refresh data
-            loadHoneypots();
-            loadWhitelist();
-        }
-    })
-    .catch(error => {
-        console.error('Error whitelisting token:', error);
-        alert('Error whitelisting token. Please try again.');
-    });
-}
-
-// Clean up on page unload
-window.addEventListener('beforeunload', () => {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-    }
-});

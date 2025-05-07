@@ -1,91 +1,144 @@
-/* Custom styles for the Solana Wallet Monitor */
+/* Solana Wallet Monitor Styling */
 
+/* Theme Variables */
 :root {
-    /* Light mode variables */
-    --bg-color: #f8f9fa;
-    --text-color: #212529;
-    --card-bg: #ffffff;
-    --navbar-bg: #343a40;
-    --navbar-color: #ffffff;
-    --border-color: #e9ecef;
-    --input-bg: #ffffff;
-    --input-border: #ced4da;
-    --list-group-bg: #ffffff;
-    --list-group-hover: #f8f9fa;
-    --secondary-text: #6c757d;
-    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    --modal-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    --wallet-bg: #f8f9fa;
-    --honeypot-warning-bg: #f8d7da;
-    --honeypot-warning-color: #721c24;
-    --honeypot-warning-border: #f5c6cb;
+    --body-bg: #f8f9fa;
+    --body-color: #212529;
+    --card-bg: #fff;
+    --card-border: #dee2e6;
+    --nav-bg: #343a40;
+    --nav-color: #fff;
+    --primary-color: #0d6efd;
+    --danger-color: #dc3545;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --info-color: #0dcaf0;
+    --secondary-color: #6c757d;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+    --shadow-color: rgba(0, 0, 0, 0.15);
 }
 
+/* Dark Theme Variables */
 [data-theme="dark"] {
-    /* Dark mode variables */
-    --bg-color: #121212;
-    --text-color: #e9ecef;
+    --body-bg: #121212;
+    --body-color: #e0e0e0;
     --card-bg: #1e1e1e;
-    --navbar-bg: #212529;
-    --navbar-color: #ffffff;
-    --border-color: #343a40;
-    --input-bg: #2c2c2c;
-    --input-border: #495057;
-    --list-group-bg: #1e1e1e;
-    --list-group-hover: #2c2c2c;
-    --secondary-text: #adb5bd;
-    --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    --modal-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --wallet-bg: #2c2c2c;
-    --honeypot-warning-bg: #352425;
-    --honeypot-warning-color: #f8d7da;
-    --honeypot-warning-border: #842029;
+    --card-border: #333;
+    --nav-bg: #212121;
+    --nav-color: #e0e0e0;
+    --primary-color: #3d8bfd;
+    --danger-color: #e05260;
+    --success-color: #42ba96;
+    --warning-color: #ffca2c;
+    --info-color: #4dd4fc;
+    --secondary-color: #858c95;
+    --light-color: #353535;
+    --dark-color: #e0e0e0;
+    --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
+/* Base Styles */
 body {
-    background-color: var(--bg-color);
-    color: var(--text-color);
+    background-color: var(--body-bg);
+    color: var(--body-color);
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .navbar {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    background-color: var(--navbar-bg) !important;
-    color: var(--navbar-color) !important;
+    background-color: var(--nav-bg) !important;
 }
 
+.navbar-dark .navbar-brand,
+.navbar-dark .navbar-nav .nav-link {
+    color: var(--nav-color);
+}
+
+/* Card Styling */
 .card {
-    box-shadow: var(--card-shadow);
-    border: none;
-    margin-bottom: 20px;
     background-color: var(--card-bg);
-    color: var(--text-color);
+    border-color: var(--card-border);
+    box-shadow: 0 4px 6px var(--shadow-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .card-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom-color: var(--card-border);
 }
 
-.feather {
-    width: 20px;
-    height: 20px;
-    vertical-align: text-bottom;
-    margin-right: 4px;
+.bg-primary {
+    background-color: var(--primary-color) !important;
 }
 
-.wallet-address {
-    font-family: monospace;
-    background-color: var(--wallet-bg);
-    padding: 8px;
-    border-radius: 4px;
-    word-break: break-all;
-    color: var(--text-color);
+.bg-danger {
+    background-color: var(--danger-color) !important;
 }
 
+.bg-success {
+    background-color: var(--success-color) !important;
+}
+
+.bg-warning {
+    background-color: var(--warning-color) !important;
+}
+
+.bg-info {
+    background-color: var(--info-color) !important;
+}
+
+.border-danger {
+    border-color: var(--danger-color) !important;
+}
+
+/* Text Colors */
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.text-danger {
+    color: var(--danger-color) !important;
+}
+
+.text-success {
+    color: var(--success-color) !important;
+}
+
+.text-warning {
+    color: var(--warning-color) !important;
+}
+
+.text-info {
+    color: var(--info-color) !important;
+}
+
+.text-muted {
+    color: var(--secondary-color) !important;
+}
+
+/* Form Elements */
+.form-control,
+.form-select {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--body-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--card-bg);
+    color: var(--body-color);
+}
+
+/* List Groups */
+.list-group-item {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--body-color);
+}
+
+/* Tables */
 .table {
-    margin-bottom: 0;
-    color: var(--text-color);
+    color: var(--body-color);
 }
 
 .table-striped tbody tr:nth-of-type(odd) {
@@ -96,161 +149,80 @@ body {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
-.text-truncate {
-    max-width: 150px;
-    display: inline-block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.075);
 }
 
-/* Badge colors */
-.badge.bg-warning {
-    color: #212529;
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.075);
 }
 
-/* Form controls in dark mode */
-[data-theme="dark"] .form-control,
-[data-theme="dark"] .form-select {
-    background-color: var(--input-bg);
-    border-color: var(--input-border);
-    color: var(--text-color);
+/* Badges */
+.badge {
+    padding: 0.5em 0.75em;
 }
 
-/* List group in dark mode */
-[data-theme="dark"] .list-group-item {
-    background-color: var(--list-group-bg);
-    border-color: var(--border-color);
-    color: var(--text-color);
-}
-
-[data-theme="dark"] .list-group-item-action:hover {
-    background-color: var(--list-group-hover);
-}
-
-/* Modal styling */
+/* Modals */
 .modal-content {
-    border: none;
-    box-shadow: var(--modal-shadow);
     background-color: var(--card-bg);
-    color: var(--text-color);
+    border-color: var(--card-border);
 }
 
-.modal-header {
-    background-color: var(--card-bg);
-    border-bottom: 1px solid var(--border-color);
-}
-
+.modal-header,
 .modal-footer {
-    background-color: var(--card-bg);
-    border-top: 1px solid var(--border-color);
+    border-color: var(--card-border);
 }
 
-/* Token styling */
-.token-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-right: 4px;
-}
-
-/* Transaction details */
+/* Custom Components */
 .transaction-details h6 {
-    color: var(--secondary-text);
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin-bottom: 4px;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
-.transaction-details p {
-    margin-bottom: 8px;
+/* Alert Styles */
+.alert-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border-color: rgba(13, 202, 240, 0.2);
+    color: var(--info-color);
 }
 
-/* Honeypot warning */
-.honeypot-warning {
-    background-color: var(--honeypot-warning-bg);
-    color: var(--honeypot-warning-color);
-    border: 1px solid var(--honeypot-warning-border);
-    border-radius: 4px;
-    padding: 12px;
-    margin-bottom: 16px;
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.2);
+    color: var(--warning-color);
 }
 
-/* Dashboard cards */
-.dashboard-stat {
-    padding: 16px;
-    border-radius: 8px;
-    background-color: var(--card-bg);
-    box-shadow: var(--card-shadow);
-    margin-bottom: 20px;
+/* Buttons in dark mode */
+[data-theme="dark"] .btn-outline-secondary {
+    color: #ccc;
+    border-color: #666;
 }
 
-.dashboard-stat h3 {
-    font-size: 1.8rem;
-    margin-bottom: 0;
+[data-theme="dark"] .btn-outline-secondary:hover {
+    background-color: #666;
+    color: #fff;
 }
 
-.dashboard-stat p {
-    color: var(--secondary-text);
-    margin-bottom: 0;
+/* Suspicious Activity Alerts */
+#suspiciousActivityAlerts .list-group-item {
+    border-left: 4px solid var(--danger-color);
 }
 
-/* Settings page */
-.form-label {
-    font-weight: 600;
-    color: var(--text-color);
+#suspiciousActivityAlerts .text-danger.fw-bold {
+    font-size: 1.05rem;
+    text-shadow: 0 0 1px rgba(255, 0, 0, 0.2);
 }
 
-.form-text {
-    color: var(--secondary-text);
-    font-size: 0.8rem;
-}
-
-/* Dark mode toggle button */
-.dark-mode-toggle {
-    cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    color: var(--navbar-color);
-}
-
-.dark-mode-toggle:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.dark-mode-toggle .feather {
-    margin-right: 5px;
-}
-
-/* Alert colors in dark mode */
-[data-theme="dark"] .alert-info {
-    background-color: #172c40;
-    color: #9ec5fe;
-    border-color: #084298;
-}
-
-[data-theme="dark"] .alert-warning {
-    background-color: #332701;
-    color: #ffda6a;
-    border-color: #664d03;
-}
-
-/* Links in dark mode */
-[data-theme="dark"] a {
-    color: #8bb9fe;
-}
-
-[data-theme="dark"] a:hover {
-    color: #9ec5fe;
-}
-
-/* Code and pre blocks */
-[data-theme="dark"] code, 
-[data-theme="dark"] pre {
-    background-color: #2c2c2c;
-    color: #e9ecef;
+/* Additional responsive adjustments */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.5rem;
+    }
 }

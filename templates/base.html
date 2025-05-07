@@ -1,14 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Solana Wallet Monitor{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -21,7 +19,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Dashboard</a>
                     </li>
@@ -35,11 +33,10 @@
                         <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
                     </li>
                 </ul>
-                <div class="d-flex">
-                    <div id="darkModeToggle" class="dark-mode-toggle">
+                <div class="ms-auto">
+                    <button id="darkModeToggle" class="btn btn-outline-light btn-sm">
                         <i data-feather="moon"></i>
-                        <span>Dark Mode</span>
-                    </div>
+                    </button>
                 </div>
             </div>
         </div>
@@ -47,15 +44,85 @@
 
     <div class="container mt-4">
         {% block content %}{% endblock %}
+        
+        <!-- Suspicious Activity Alerts -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div id="suspiciousActivityAlerts">
+                    <!-- Alerts will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/dark-mode.js"></script>
-    {% block scripts %}{% endblock %}
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             feather.replace();
+            loadSuspiciousActivity();
+            
+            // Periodically check for new suspicious activity
+            setInterval(loadSuspiciousActivity, 30000); // Check every 30 seconds
         });
+        
+        function loadSuspiciousActivity() {
+            fetch('/api/suspicious')
+                .then(response => response.json())
+                .then(data => {
+                    const alertsContainer = document.getElementById('suspiciousActivityAlerts');
+                    
+                    if (data.length === 0) {
+                        alertsContainer.innerHTML = '';
+                        return;
+                    }
+                    
+                    let html = `
+                        <div class="card border-danger">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="card-title mb-0">
+                                    <i data-feather="alert-triangle"></i>
+                                    Suspicious Activity Detected
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group">
+                    `;
+                    
+                    data.forEach(alert => {
+                        html += `
+                            <li class="list-group-item border-danger">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="text-danger fw-bold">${alert.reason}</span>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted">${alert.timestamp}</small>
+                                    </div>
+                                </div>
+                                <div>
+                                    <small class="text-muted">Address: ${alert.address}</small>
+                                </div>
+                            </li>
+                        `;
+                    });
+                    
+                    html += `
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                    
+                    alertsContainer.innerHTML = html;
+                    feather.replace();
+                })
+                .catch(error => {
+                    console.error('Error loading suspicious activity:', error);
+                });
+        }
     </script>
+    
+    {% block scripts %}{% endblock %}
 </body>
 </html>

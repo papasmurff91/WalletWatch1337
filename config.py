@@ -13,6 +13,7 @@ HONEYPOT_FILE = "honeypots.json"
 WHITELIST_FILE = "whitelist.json"
 LOG_FILE = "wallet_log.txt"
 TRANSACTION_HISTORY_FILE = "transaction_history.json"
+SUSPICIOUS_ADDRESSES_FILE = "suspicious_addresses.json"
 
 # Web Interface
 WEB_PORT = int(os.getenv("WEB_PORT", "5000"))

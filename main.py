@@ -12,7 +12,8 @@ from solana_rpc import SolanaRPC
 from honeypot_detector import HoneypotDetector
 from notification_service import NotificationService
 from wallet_monitor import WalletMonitor
-from config import WEB_PORT, WEB_HOST, HONEYPOT_FILE, WHITELIST_FILE, TOKEN_MAP
+from suspicious_activity import SuspiciousActivityDetector
+from config import WEB_PORT, WEB_HOST, HONEYPOT_FILE, WHITELIST_FILE, TOKEN_MAP, SUSPICIOUS_ADDRESSES_FILE
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -20,6 +21,7 @@ app = Flask(__name__)
 # Global variables
 monitor = None
 wallet_address = None
+suspicious_detector = None
 
 @app.route('/')
 def index():
@@ -124,9 +126,30 @@ def api_token_info(mint):
         'holders': holders
     })
 
+@app.route('/api/suspicious')
+def api_suspicious_activity():
+    """Get list of suspicious activity alerts"""
+    if not suspicious_detector:
+        return jsonify({'error': 'Suspicious activity detector not initialized'}), 400
+    
+    # Get query parameters
+    limit = int(request.args.get('limit', 5))
+    
+    alerts = suspicious_detector.get_recent_alerts(limit)
+    return jsonify(alerts)
+
+@app.route('/api/suspicious/addresses')
+def api_suspicious_addresses():
+    """Get list of suspicious addresses"""
+    if not suspicious_detector:
+        return jsonify({'error': 'Suspicious activity detector not initialized'}), 400
+    
+    addresses = list(suspicious_detector.suspicious_addresses)
+    return jsonify(addresses)
+
 def start_monitor(wallet):
     """Start the wallet monitor in a separate thread"""
-    global monitor, wallet_address
+    global monitor, wallet_address, suspicious_detector
     
     wallet_address = wallet
     
@@ -134,9 +157,16 @@ def start_monitor(wallet):
     solana_rpc = SolanaRPC()
     honeypot_detector = HoneypotDetector(solana_rpc)
     notification_service = NotificationService()
+    suspicious_detector = SuspiciousActivityDetector(solana_rpc)
     
     # Create and start the monitor
-    monitor = WalletMonitor(wallet, solana_rpc, honeypot_detector, notification_service)
+    monitor = WalletMonitor(
+        wallet, 
+        solana_rpc, 
+        honeypot_detector, 
+        notification_service,
+        suspicious_detector
+    )
     
     # Start monitoring in a separate thread
     monitor_thread = threading.Thread(target=monitor.poll_wallet)

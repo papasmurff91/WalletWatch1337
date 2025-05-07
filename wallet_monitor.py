@@ -13,11 +13,12 @@ class WalletMonitor:
     honeypot tokens
     """
     
-    def __init__(self, wallet_address, solana_rpc, honeypot_detector, notification_service):
+    def __init__(self, wallet_address, solana_rpc, honeypot_detector, notification_service, suspicious_detector=None):
         self.wallet_address = wallet_address
         self.solana_rpc = solana_rpc
         self.honeypot_detector = honeypot_detector
         self.notification_service = notification_service
+        self.suspicious_detector = suspicious_detector
         self.seen_signatures = set()
         self.transaction_history = self.load_transaction_history()
         
@@ -68,6 +69,7 @@ class WalletMonitor:
                 "block_time": block_time,
                 "events": [],
                 "honeypot_flags": [],
+                "suspicious_flags": [],
                 "program_ids": []
             }
             
@@ -199,6 +201,16 @@ class WalletMonitor:
                             self.notification_service.notify_honeypot_swap(event["mint"], program_id)
                     
                     break
+            
+            # Check for suspicious activity if the detector is available
+            if self.suspicious_detector:
+                is_suspicious, reason = self.suspicious_detector.analyze_transaction(transaction_data)
+                if is_suspicious:
+                    transaction_data["suspicious_flags"].append({
+                        "reason": reason,
+                        "severity": "high"
+                    })
+                    self.log_message(f"🔍 SUSPICIOUS ACTIVITY DETECTED: {reason}")
                     
             # Add to history and save
             self.transaction_history.append(transaction_data)
