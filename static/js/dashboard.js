@@ -16,6 +16,7 @@ function refreshData() {
     loadTransactions();
     loadHoneypots();
     loadWhitelist();
+    loadFlaggedActivities();
 }
 
 /**
@@ -219,5 +220,70 @@ function loadWhitelist() {
         .catch(error => {
             console.error('Error loading whitelist:', error);
             whitelistContainer.innerHTML = '<p class="text-center text-danger">Error loading whitelist data.</p>';
+        });
+}
+
+/**
+ * Load flagged suspicious activities
+ */
+function loadFlaggedActivities() {
+    const flaggedActivitiesContainer = document.getElementById('flaggedActivities');
+    
+    fetch('/api/suspicious?limit=5')
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) {
+                flaggedActivitiesContainer.innerHTML = '<p class="text-center">No suspicious activities detected yet.</p>';
+                return;
+            }
+            
+            let html = '<div class="list-group">';
+            
+            data.forEach(activity => {
+                // Determine the severity level based on the type of suspicious activity
+                let severityClass = '';
+                let severityLabel = '';
+                
+                if (activity.reason.includes('Unsellable token') || activity.reason.includes('rug pull')) {
+                    severityClass = 'danger';
+                    severityLabel = 'CRITICAL';
+                } else if (activity.reason.includes('Flash launch') || activity.reason.includes('Cross-chain transfer')) {
+                    severityClass = 'warning';
+                    severityLabel = 'HIGH';
+                } else {
+                    severityClass = 'info';
+                    severityLabel = 'MEDIUM';
+                }
+                
+                html += `
+                    <a href="/suspicious" class="list-group-item list-group-item-${severityClass} list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-${severityClass}">${severityLabel}</span>
+                                <span class="ms-2">${activity.timestamp || 'Unknown time'}</span>
+                            </div>
+                            <div>
+                                <small class="text-truncate" style="max-width: 200px; display: inline-block;">
+                                    ${activity.address || 'Unknown address'}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <strong style="color: #dc3545; font-weight: bold;">${activity.reason}</strong>
+                        </div>
+                        <div class="mt-1">
+                            <small>${activity.details || ''}</small>
+                        </div>
+                    </a>
+                `;
+            });
+            
+            html += '</div>';
+            
+            flaggedActivitiesContainer.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading suspicious activities:', error);
+            flaggedActivitiesContainer.innerHTML = '<p class="text-center text-danger">Error loading suspicious activities data.</p>';
         });
 }

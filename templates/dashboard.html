@@ -79,6 +79,35 @@
         </div>
     </div>
 </div>
+
+<!-- Flagged Suspicious Activities Section -->
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i data-feather="alert-octagon"></i>
+                    Flagged Suspicious Activities
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="flaggedActivities">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-danger" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="/suspicious" class="btn btn-outline-danger">
+                        <i data-feather="shield-off"></i> View All Suspicious Activities
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
