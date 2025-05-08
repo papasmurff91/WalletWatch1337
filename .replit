@@ -49,3 +49,19 @@ run = [
 [[ports]]
 localPort = 5000
 externalPort = 80
+//
+import { TwitterApi } from 'twitter-api-v2'
+import { TwitterApiRateLimitPlugin } from '@twitter-api-v2/plugin-rate-limit'
+
+const rateLimitPlugin = new TwitterApiRateLimitPlugin()
+const client = new TwitterApi(yourKeys, { plugins: [rateLimitPlugin] })
+
+// ...make requests...
+await client.v2.me()
+
+const currentRateLimitForMe = await rateLimitPlugin.v2.getRateLimit('users/me')
+console.log(currentRateLimitForMe.limit) // 75
+console.log(currentRateLimitForMe.remaining) // 74
+
+console.log(rateLimitPlugin.hasHitRateLimit(currentRateLimitForMe)) // false - .remaining > 0
+console.log(rateLimitPlugin.isRateLimitStatusObsolete(currentRateLimitForMe)) // false - reset hasn't been hit yet
