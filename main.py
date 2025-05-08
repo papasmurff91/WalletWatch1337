@@ -97,14 +97,16 @@ def api_transactions():
         return jsonify({'error': 'Wallet monitor not initialized'}), 400
     
     # Get query parameters
-    limit = int(request.args.get('limit', 10))
+    try:
+        # Get query parameters
+        limit = int(request.args.get('limit', 10))
     
-    # Get transactions and sort by block time descending
-    transactions = sorted(
-        monitor.transaction_history,
-        key=lambda x: x.get('block_time', 0),
-        reverse=True
-    )[:limit]
+        # Get transactions and sort by block time descending
+        transactions = sorted(
+            monitor.transaction_history,
+            key=lambda x: x.get('block_time', 0),
+            reverse=True
+        )[:limit]
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
