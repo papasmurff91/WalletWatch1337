@@ -106,6 +106,8 @@ def api_transactions():
         reverse=True
     )[:limit]
     
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     return jsonify(transactions)
 
 @app.route('/api/honeypots')
@@ -114,17 +116,18 @@ def api_honeypots():
     if not monitor:
         return jsonify({'error': 'Wallet monitor not initialized'}), 400
     
-    honeypots = []
-    
-    for mint in monitor.honeypot_detector.honeypots:
-        price = monitor.solana_rpc.get_token_price_usd(mint)
-        honeypots.append({
-            'mint': mint,
-            'price': price,
-            'holders': monitor.solana_rpc.get_token_holders(mint)
-        })
-    
-    return jsonify(honeypots)
+    try:
+        honeypots = []
+        for mint in monitor.honeypot_detector.honeypots:
+            price = monitor.solana_rpc.get_token_price_usd(mint)
+            honeypots.append({
+                'mint': mint,
+                'price': price,
+                'holders': monitor.solana_rpc.get_token_holders(mint)
+            })
+        return jsonify(honeypots)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/whitelist')
 def api_whitelist():
@@ -132,18 +135,19 @@ def api_whitelist():
     if not monitor:
         return jsonify({'error': 'Wallet monitor not initialized'}), 400
     
-    whitelist = []
-    
-    for mint in monitor.honeypot_detector.whitelist:
-        token_name = TOKEN_MAP.get(mint, (f"Token ({mint[:4]}...{mint[-4:]})", 6))[0]
-        price = monitor.solana_rpc.get_token_price_usd(mint)
-        whitelist.append({
-            'mint': mint,
-            'name': token_name,
-            'price': price
-        })
-    
-    return jsonify(whitelist)
+    try:
+        whitelist = []
+        for mint in monitor.honeypot_detector.whitelist:
+            token_name = TOKEN_MAP.get(mint, (f"Token ({mint[:4]}...{mint[-4:]})", 6))[0]
+            price = monitor.solana_rpc.get_token_price_usd(mint)
+            whitelist.append({
+                'mint': mint,
+                'name': token_name,
+                'price': price
+            })
+        return jsonify(whitelist)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/whitelist/<mint>', methods=['POST'])
 def api_add_to_whitelist(mint):
