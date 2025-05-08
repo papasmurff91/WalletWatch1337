@@ -30,3 +30,5 @@ run = ["sh", "-c", "pip install flask requests && python main.py --web 4Zw5RN4s7
 [[ports]]
 localPort = 5000
 externalPort = 80
+package-lock.json
+TwitterApiRateLimitPlugin.v2
