@@ -2,7 +2,21 @@ modules = ["nodejs-20", "python-3.11"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "gobject-introspection", "gtk3", "pkg-config", "qhull", "tcl", "tk", "try", "imagemagick_light", "mailutils"]
+packages = [
+  "cairo",
+  "ffmpeg-full",
+  "freetype",
+  "ghostscript",
+  "gobject-introspection",
+  "gtk3",
+  "pkg-config",
+  "qhull",
+  "tcl",
+  "tk",
+  "try",
+  "imagemagick_light",
+  "mailutils",
+]
 
 [workflows]
 runButton = "Project"
@@ -26,7 +40,11 @@ args = "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNS
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs"]
+run = [
+  "sh",
+  "-c",
+  "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs",
+]
 
 [[ports]]
 localPort = 5000
