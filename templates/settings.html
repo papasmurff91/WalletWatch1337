@@ -922,4 +922,36 @@
         feather.replace();
     }
 </script>
+//
+from twitter_service import TwitterService
+
+def test_tweet():
+    # Initialize Twitter service
+    twitter_service = TwitterService()
+
+    # Verify that Twitter API is enabled
+    if not twitter_service.is_enabled():
+        print("theyre cooked")
+        return
+
+    # Send a test tweet
+    message = "Hello, Twitter! the game just changed, and you really are early."
+    if twitter_service.post_tweet(message, "PapaRadbro"):
+        print("BANGER!")
+    else:
+        print("watdafuk.")
+
+if __name__ == '__main__':
+    test_tweet()
 {% endblock %}
+// End of settings.html
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Hello, skiddz"
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)  # Make sure the host is 0.0.0.0
