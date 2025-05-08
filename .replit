@@ -1,22 +1,7 @@
-modules = ["nodejs-20", "python-3.11"]
+modules = ["python-3.11"]
 
 [nix]
 channel = "stable-24_05"
-packages = [
-  "cairo",
-  "ffmpeg-full",
-  "freetype",
-  "ghostscript",
-  "gobject-introspection",
-  "gtk3",
-  "pkg-config",
-  "qhull",
-  "tcl",
-  "tk",
-  "try",
-  "imagemagick_light",
-  "mailutils",
-]
 
 [workflows]
 runButton = "Project"
@@ -40,28 +25,8 @@ args = "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNS
 waitForPort = 5000
 
 [deployment]
-run = [
-  "sh",
-  "-c",
-  "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs",
-]
+run = ["sh", "-c", "pip install flask requests && python main.py --web 4Zw5RN4s7xTJyW6K2xaNSxTUHoYdUZEF1ZkxS7ZAvjSs"]
 
 [[ports]]
 localPort = 5000
 externalPort = 80
-//
-import { TwitterApi } from 'twitter-api-v2'
-import { TwitterApiRateLimitPlugin } from '@twitter-api-v2/plugin-rate-limit'
-
-const rateLimitPlugin = new TwitterApiRateLimitPlugin()
-const client = new TwitterApi(yourKeys, { plugins: [rateLimitPlugin] })
-
-// ...make requests...
-await client.v2.me()
-
-const currentRateLimitForMe = await rateLimitPlugin.v2.getRateLimit('users/me')
-console.log(currentRateLimitForMe.limit) // 75
-console.log(currentRateLimitForMe.remaining) // 74
-
-console.log(rateLimitPlugin.hasHitRateLimit(currentRateLimitForMe)) // false - .remaining > 0
-console.log(rateLimitPlugin.isRateLimitStatusObsolete(currentRateLimitForMe)) // false - reset hasn't been hit yet
