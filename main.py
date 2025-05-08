@@ -271,6 +271,21 @@ def api_suspicious_addresses():
     addresses = list(suspicious_detector.suspicious_addresses)
     return jsonify(addresses)
     
+
+@app.route('/api/donations', methods=['GET'])
+def api_donations():
+    """Return donation details"""
+    # Mock data for demonstration
+    donations_data = {
+        'balance': 10.25,  # Balance in ETH
+        'recent_donors': [
+            {'name': 'Alice', 'amount': 1.5},
+            {'name': 'Bob', 'amount': 0.75},
+            {'name': 'Charlie', 'amount': 3.0}
+        ]
+    }
+    return jsonify(donations_data)
+
 @app.route('/api/analytics')
 def api_analytics():
     """Get analytics data for dashboard visualizations"""
