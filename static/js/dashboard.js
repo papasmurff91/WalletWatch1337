@@ -1,4 +1,28 @@
 /**
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadDonationInfo();
+});
+
+function loadDonationInfo() {
+    fetch('/api/donations')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('donationBalance').textContent = data.balance.toFixed(4); // assuming balance is in ETH
+            const donorList = document.getElementById('donorList');
+            donorList.innerHTML = ''; // Clear existing donors
+            data.recent_donors.forEach(donor => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${donor.name}: ${donor.amount.toFixed(4)} ETH`;
+                donorList.appendChild(listItem);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading donations:', error);
+            document.getElementById('donationBalance').textContent = 'Error fetching data';
+        });
+}
+
  * Dashboard functionality for Solana Wallet Monitor
  */
 
